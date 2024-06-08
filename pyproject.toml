@@ -18,3 +18,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License"
 ]
+[project.urls]
+"Homepage" = "https://github.com/AnswerDotAI/sqlite-minutils"
+
+
