@@ -5,17 +5,7 @@ from .utils import ( chunks, hash_record, sqlite3, OperationalError, suggest_col
 import binascii
 from collections import namedtuple
 from collections.abc import Mapping
-import contextlib
-import datetime
-import decimal
-import inspect
-import itertools
-import json
-import os
-import pathlib
-import re
-import secrets
-import textwrap
+import contextlib, datetime, decimal, inspect, itertools, json, os, pathlib, re, secrets, textwrap
 from typing import ( cast, Any, Callable, Dict, Generator, Iterable, Union, Optional, List, Tuple,)
 import uuid
 
@@ -195,6 +185,10 @@ CREATE TABLE IF NOT EXISTS [{}](
 """.strip()
 
 
+def __conn_enter__(self): pass
+def __conn_exit__(self, exc_type, exc_value, traceback):
+    if not exc_type: self.commit()
+
 class Database:
     """
     Wrapper for a SQLite database connection that adds a variety of useful utility methods.
@@ -259,6 +253,9 @@ class Database:
         else:
             assert not recreate, "recreate cannot be used with connections, only paths"
             self.conn = filename_or_conn
+        if not hasattr(self.conn, '__enter__'):
+            self.conn.__enter__ = __conn_enter__
+            self.conn.__exit__ = __conn_exit__
         self._tracer = tracer
         if recursive_triggers:
             self.execute("PRAGMA recursive_triggers=on;")
@@ -269,6 +266,11 @@ class Database:
     def close(self):
         "Close the SQLite connection, and the underlying database file"
         self.conn.close()
+
+    def get_last_rowid(self):
+        res = next(self.execute('SELECT last_insert_rowid()'), None)
+        if res is None: return None
+        return int(res[0])
 
     @contextlib.contextmanager
     def ensure_autocommit_off(self):
@@ -2874,7 +2876,7 @@ class Table(Queryable):
                     else:
                         raise
             if num_records_processed == 1:
-                rid = self.db.conn.lastrowid
+                rid = self.db.get_last_rowid()
                 if rid is not None:
                     self.last_pk = self.last_rowid = rid
                     # self.last_rowid will be 0 if a "INSERT OR IGNORE" happened
