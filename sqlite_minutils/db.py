@@ -255,7 +255,7 @@ class Database:
                     # https://github.com/simonw/sqlite-utils/issues/503
                     self.conn = sqlite3.connect(":memory:")
                     raise
-            self.conn = sqlite3.connect(str(filename_or_conn))
+            self.conn = sqlite3.connect(str(filename_or_conn), check_same_thread=False)
         else:
             assert not recreate, "recreate cannot be used with connections, only paths"
             self.conn = filename_or_conn
@@ -2829,7 +2829,7 @@ class Table(Queryable):
             result = None
             for query, params in queries_and_params:
                 try:
-                    result = self.db.execute(query, params)
+                    result = self.db.execute(query, tuple(params))
                 except OperationalError as e:
                     if alter and (" column" in e.args[0]):
                         # Attempt to add any missing columns, then try again
