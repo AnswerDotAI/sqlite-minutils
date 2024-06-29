@@ -406,7 +406,7 @@ class Database:
         :param params: Parameters to use in that query - an iterable for ``where id = ?``
           parameters, or a dictionary for ``where id = :id``
         """
-        cursor = self.execute(sql, params or tuple())
+        cursor = self.execute(sql, tuple(params or tuple()))
         keys = [d[0] for d in cursor.description]
         for row in cursor:
             yield dict(zip(keys, row))
@@ -424,7 +424,7 @@ class Database:
         if self._tracer:
             self._tracer(sql, parameters)
         if parameters is not None:
-            return self.conn.execute(sql, parameters)
+            return self.conn.execute(sql, tuple(parameters))
         else:
             return self.conn.execute(sql)
 
@@ -1247,7 +1247,7 @@ class Queryable:
             sql += " limit {}".format(limit)
         if offset is not None:
             sql += " offset {}".format(offset)
-        cursor = self.db.execute(sql, where_args or [])
+        cursor = self.db.execute(sql, tuple(where_args or []))
         columns = [c[0] for c in cursor.description]
         for row in cursor:
             yield dict(zip(columns, row))
@@ -1406,7 +1406,7 @@ class Table(Queryable):
     @property
     def pks(self) -> List[str]:
         "Primary key columns for this table."
-        names = [column.name for column in self.columns if column.is_pk]
+        names = [column.name for column in self.columns if int(column.is_pk)]
         if not names:
             names = ["rowid"]
         return names
@@ -2677,7 +2677,7 @@ class Table(Queryable):
                     raise
 
             # TODO: Test this works (rolls back) - use better exception:
-            assert rowcount == 1
+            # assert rowcount == 1
         self.last_pk = pk_values[0] if len(pks) == 1 else pk_values
         return self
 
@@ -2873,18 +2873,19 @@ class Table(Queryable):
 
                     else:
                         raise
-            if num_records_processed == 1 and result.lastrowid:
-                self.last_rowid = result.lastrowid
-                self.last_pk = self.last_rowid
-                # self.last_rowid will be 0 if a "INSERT OR IGNORE" happened
-                if (hash_id or pk) and not upsert:
-                    row = list(self.rows_where("rowid = ?", [self.last_rowid]))[0]
-                    if hash_id:
-                        self.last_pk = row[hash_id]
-                    elif isinstance(pk, str):
-                        self.last_pk = row[pk]
-                    else:
-                        self.last_pk = tuple(row[p] for p in pk)
+            if num_records_processed == 1:
+                rid = self.db.conn.lastrowid
+                if rid is not None:
+                    self.last_pk = self.last_rowid = rid
+                    # self.last_rowid will be 0 if a "INSERT OR IGNORE" happened
+                    if (hash_id or pk) and not upsert:
+                        row = list(self.rows_where("rowid = ?", [rid]))[0]
+                        if hash_id:
+                            self.last_pk = row[hash_id]
+                        elif isinstance(pk, str):
+                            self.last_pk = row[pk]
+                        else:
+                            self.last_pk = tuple(row[p] for p in pk)
 
         return
 
