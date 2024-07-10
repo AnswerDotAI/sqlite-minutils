@@ -7,6 +7,7 @@ from collections import namedtuple
 from collections.abc import Mapping
 import contextlib, datetime, decimal, inspect, itertools, json, os, pathlib, re, secrets, textwrap
 from typing import ( cast, Any, Callable, Dict, Generator, Iterable, Union, Optional, List, Tuple,)
+from functools import cache
 import uuid
 
 try: from sqlite_dump import iterdump
@@ -440,6 +441,7 @@ class Database:
             self._tracer(sql, None)
         return self.conn.executescript(sql)
 
+    @cache
     def table(self, table_name: str, **kwargs) -> Union["Table", "View"]:
         """
         Return a table object, optionally configured with default options.
