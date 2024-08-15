@@ -1420,6 +1420,18 @@ class Table(Queryable):
         "Does this table use ``rowid`` for its primary key (no other primary keys are specified)?"
         return not any(column for column in self.columns if column.is_pk)
 
+    def __contains__(self, pk_values: Union[list, tuple, str, int]) -> bool:
+        """
+        Does a row with the specified primary key value exist in this table?
+
+        :param pk_values: A single value, or a tuple of values for tables that have a compound primary key
+        """
+        try:
+            self.get(pk_values)
+            return True
+        except NotFoundError:
+            return False
+
     def get(self, pk_values: Union[list, tuple, str, int]) -> dict:
         """
         Return row (as dictionary) for the specified primary key.
