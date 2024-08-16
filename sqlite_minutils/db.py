@@ -1263,6 +1263,7 @@ class Queryable:
         order_by: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        select: str = '*',
     ) -> Generator[Tuple[Any, Dict], None, None]:
         """
         Like ``.rows_where()`` but returns ``(pk, row)`` pairs - ``pk`` can be a single value or tuple.
@@ -1278,9 +1279,10 @@ class Queryable:
         column_names = [column.name for column in self.columns]
         pks = [column.name for column in self.columns if column.is_pk]
         if not pks:
-            column_names.insert(0, "rowid")
+            #column_names.insert(0, "rowid")
+            select = f'rowid,{select}'
             pks = ["rowid"]
-        select = ",".join("[{}]".format(column_name) for column_name in column_names)
+        #select = ",".join("[{}]".format(column_name) for column_name in column_names)
         for row in self.rows_where(
             select=select,
             where=where,
