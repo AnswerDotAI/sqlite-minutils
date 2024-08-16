@@ -126,10 +126,14 @@ COLUMN_TYPE_MAPPING = {
 }
 # If numpy is available, add more types
 if np:
-    COLUMN_TYPE_MAPPING.update(
-        {np.int8: "INTEGER", np.int16: "INTEGER", np.int32: "INTEGER", np.int64: "INTEGER", np.uint8: "INTEGER", np.uint16: "INTEGER",
-         np.uint32: "INTEGER", np.uint64: "INTEGER", np.float16: "FLOAT", np.float32: "FLOAT", np.float64: "FLOAT", }
-    )
+    try:
+        COLUMN_TYPE_MAPPING.update(
+            {np.int8: "INTEGER", np.int16: "INTEGER", np.int32: "INTEGER", np.int64: "INTEGER", np.uint8: "INTEGER", np.uint16: "INTEGER",
+             np.uint32: "INTEGER", np.uint64: "INTEGER", np.float16: "FLOAT", np.float32: "FLOAT", np.float64: "FLOAT", }
+        )
+    except AttributeError:
+        # https://github.com/simonw/sqlite-utils/issues/632
+        pass
 
 # If pandas is available, add more types
 if pd: COLUMN_TYPE_MAPPING.update({pd.Timestamp: "TEXT"})  # type: ignore
@@ -234,7 +238,7 @@ class Database:
         ), "Either specify a filename_or_conn or pass memory=True"
         if memory_name:
             uri = "file:{}?mode=memory&cache=shared".format(memory_name)
-            self.conn = sqlite3.connect(
+            self.conn = sqlite3.OL
                 uri,
                 uri=True,
                 check_same_thread=False,
