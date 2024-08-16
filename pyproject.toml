@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sqlite_minutils"
-version = "3.36.0.post5"
+version = "3.37.0.post1"
 description = "A fork of sqlite-utils with CLI etc removed"
 readme = "README.md"
 license = { file = "LICENSE" }
