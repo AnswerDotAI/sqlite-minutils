@@ -238,7 +238,7 @@ class Database:
         ), "Either specify a filename_or_conn or pass memory=True"
         if memory_name:
             uri = "file:{}?mode=memory&cache=shared".format(memory_name)
-            self.conn = sqlite3.OL
+            self.conn = sqlite3.connect(
                 uri,
                 uri=True,
                 check_same_thread=False,
