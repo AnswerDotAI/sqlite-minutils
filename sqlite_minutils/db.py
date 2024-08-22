@@ -445,6 +445,19 @@ class Database:
             self._tracer(sql, None)
         return self.conn.executescript(sql)
 
+    def convert_lists_to_tuples(function):
+        """functool module cache decorator doesn't work with lists, so this decorator
+        converts all lists to tuples before calling the function, and then converts
+        any lists in the result back to tuples.
+        """
+        def wrapper(*args, **kwargs):
+            args = tuple(tuple(arg) if isinstance(arg, list) else arg for arg in args)
+            kwargs = {k: tuple(v) if isinstance(v, list) else v for k, v in kwargs.items()}
+            result = function(*args, **kwargs)
+            return tuple(result) if isinstance(result, list) else result
+        return wrapper
+
+    @convert_lists_to_tuples
     @cache
     def table(self, table_name: str, **kwargs) -> Union["Table", "View"]:
         """
