@@ -1,7 +1,6 @@
 # This file is from sqlite-utils and copyright and license is the same as that project
 
 import base64
-import contextlib
 import csv
 import enum
 import hashlib
