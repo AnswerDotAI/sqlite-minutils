@@ -1,7 +1,10 @@
-_proc/
-db_dc.py
-*.sqlite
+posts/
+.quarto
+.sesskey
+*.db-*
 *.db
+.gitattributes
+_proc/
 sidebar.yml
 Gemfile.lock
 token

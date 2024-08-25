@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "sqlite-minutils"
+  site-url: "https://AnswerDotAI.github.io/sqlite-minutils"
+  description: "A fork of sqlite-utils with CLI etc removed"
+  repo-branch: main
+  repo-url: "https://github.com/AnswerDotAI/sqlite-minutils"
