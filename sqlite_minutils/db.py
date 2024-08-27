@@ -918,7 +918,7 @@ class Database:
         """
         # Transform table to match the new definition if table already exists:
         if self[name].exists():
-            if ignore:
+            if ignore and not transform:
                 return cast(Table, self[name])
             elif replace:
                 self[name].drop()
