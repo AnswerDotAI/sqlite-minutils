@@ -1266,8 +1266,10 @@ class Queryable:
             sql += " order by " + order_by
         if limit is not None:
             sql += " limit {}".format(limit)
+        if offset is not None and limit is None:
+            raise ValueError("Cannot use offset without limit")
         if offset is not None:
-            sql += " offset {}".format(offset)
+            sql += f" offset {offset}"
         cursor = self.db.execute(sql, tuple(where_args or []))
         columns = [c[0] for c in cursor.description]
         for row in cursor:
