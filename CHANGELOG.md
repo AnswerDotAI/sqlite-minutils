@@ -2,6 +2,14 @@
 
 <!-- do not remove -->
 
+## 3.37.0.post3
+
+### New Features
+
+- Cleaner error handling on offset without limit ([#11](https://github.com/AnswerDotAI/sqlite-minutils/pull/11)), thanks to [@pydanny](https://github.com/pydanny)
+- Correct `Database.create_table` to support transforms. ([#9](https://github.com/AnswerDotAI/sqlite-minutils/pull/9)), thanks to [@pydanny](https://github.com/pydanny)
+
+
 ## 3.37.0.post2
 
 ### New Features
