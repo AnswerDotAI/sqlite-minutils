@@ -413,7 +413,7 @@ class Database:
         :param params: Parameters to use in that query - an iterable for ``where id = ?``
           parameters, or a dictionary for ``where id = :id``
         """
-        cursor = self.execute(sql, tuple(params or tuple()))
+        cursor = self.execute(sql, params or tuple())
         keys = [d[0] for d in cursor.description]
         for row in cursor:
             yield dict(zip(keys, row))
@@ -431,6 +431,8 @@ class Database:
         if self._tracer:
             self._tracer(sql, parameters)
         if parameters is not None:
+            if not isinstance(parameters, dict):
+                parameters = tuple(parameters)
             return self.conn.execute(sql, parameters)
         else:
             return self.conn.execute(sql)
