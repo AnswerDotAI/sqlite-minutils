@@ -431,7 +431,7 @@ class Database:
         if self._tracer:
             self._tracer(sql, parameters)
         if parameters is not None:
-            return self.conn.execute(sql, tuple(parameters))
+            return self.conn.execute(sql, parameters)
         else:
             return self.conn.execute(sql)
 
