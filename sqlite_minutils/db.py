@@ -253,7 +253,7 @@ class Database:
                 except OSError:
                     # Avoid mypy and __repr__ errors, see:
                     # https://github.com/simonw/sqlite-utils/issues/503
-                    self.conn = sqlite3.connect(":memory:")
+                    self.conn = sqlite3.connect(":memory:", isolation_level=None)
                     raise
             self.conn = sqlite3.connect(str(filename_or_conn), check_same_thread=False, isolation_level=None)
         else:
