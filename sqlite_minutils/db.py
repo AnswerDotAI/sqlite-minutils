@@ -242,9 +242,10 @@ class Database:
                 uri,
                 uri=True,
                 check_same_thread=False,
+                isolation_level=None
             )
         elif memory or filename_or_conn == ":memory:":
-            self.conn = sqlite3.connect(":memory:")
+            self.conn = sqlite3.connect(":memory:", isolation_level=None)
         elif isinstance(filename_or_conn, (str, pathlib.Path)):
             if recreate and os.path.exists(filename_or_conn):
                 try:
@@ -254,7 +255,7 @@ class Database:
                     # https://github.com/simonw/sqlite-utils/issues/503
                     self.conn = sqlite3.connect(":memory:")
                     raise
-            self.conn = sqlite3.connect(str(filename_or_conn), check_same_thread=False)
+            self.conn = sqlite3.connect(str(filename_or_conn), check_same_thread=False, isolation_level=None)
         else:
             assert not recreate, "recreate cannot be used with connections, only paths"
             self.conn = filename_or_conn
