@@ -1,6 +1,11 @@
 # Release notes
 
-<!-- do not remove -->
+## 3.37.0.post4
+
+### Breaking changes
+
+- Use explicit transactions ([#19](https://github.com/AnswerDotAI/sqlite-minutils/issues/19))
+
 
 ## 3.37.0.post3
 
