@@ -2885,54 +2885,54 @@ class Table(Queryable):
             ignore,
         )
 
-        with self.db.conn:
-            result = None
-            for query, params in queries_and_params:
-                try:
-                    result = self.db.execute(query, tuple(params))
-                except OperationalError as e:
-                    if alter and (" column" in e.args[0]):
-                        # Attempt to add any missing columns, then try again
-                        self.add_missing_columns(chunk)
-                        result = self.db.execute(query, params)
-                    elif e.args[0] == "too many SQL variables":
-                        first_half = chunk[: len(chunk) // 2]
-                        second_half = chunk[len(chunk) // 2 :]
+#         with self.db.conn:
+        result = None
+        for query, params in queries_and_params:
+            try:
+                result = self.db.execute(query, tuple(params))
+            except OperationalError as e:
+                if alter and (" column" in e.args[0]):
+                    # Attempt to add any missing columns, then try again
+                    self.add_missing_columns(chunk)
+                    result = self.db.execute(query, params)
+                elif e.args[0] == "too many SQL variables":
+                    first_half = chunk[: len(chunk) // 2]
+                    second_half = chunk[len(chunk) // 2 :]
 
-                        self.insert_chunk(
-                            alter,
-                            extracts,
-                            first_half,
-                            all_columns,
-                            hash_id,
-                            hash_id_columns,
-                            upsert,
-                            pk,
-                            not_null,
-                            conversions,
-                            num_records_processed,
-                            replace,
-                            ignore,
-                        )
+                    self.insert_chunk(
+                        alter,
+                        extracts,
+                        first_half,
+                        all_columns,
+                        hash_id,
+                        hash_id_columns,
+                        upsert,
+                        pk,
+                        not_null,
+                        conversions,
+                        num_records_processed,
+                        replace,
+                        ignore,
+                    )
 
-                        self.insert_chunk(
-                            alter,
-                            extracts,
-                            second_half,
-                            all_columns,
-                            hash_id,
-                            hash_id_columns,
-                            upsert,
-                            pk,
-                            not_null,
-                            conversions,
-                            num_records_processed,
-                            replace,
-                            ignore,
-                        )
+                    self.insert_chunk(
+                        alter,
+                        extracts,
+                        second_half,
+                        all_columns,
+                        hash_id,
+                        hash_id_columns,
+                        upsert,
+                        pk,
+                        not_null,
+                        conversions,
+                        num_records_processed,
+                        replace,
+                        ignore,
+                    )
 
-                    else:
-                        raise
+                else:
+                    raise
             if num_records_processed == 1:
                 rid = self.db.get_last_rowid()
                 if rid is not None:
