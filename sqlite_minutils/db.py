@@ -541,6 +541,18 @@ class Database:
         sql = "select name from sqlite_master where {}".format(" AND ".join(where))
         return [r[0] for r in self.execute(sql).fetchall()]
 
+    def begin(self):
+        "Begin a transaction"
+        return self.execute('BEGIN')
+
+    def commit(self):
+        "Commit a transaction"
+        return self.execute('COMMIT')
+
+    def rollback(self):
+        "Roll back a transaction"
+        return self.execute('ROLLBACK')
+
     def view_names(self) -> List[str]:
         "List of string view names in this database."
         return [
@@ -593,11 +605,10 @@ class Database:
         "Does this database support STRICT mode?"
         try:
             table_name = "t{}".format(secrets.token_hex(16))
-            with self.conn:
-                self.conn.execute(
-                    "create table {} (name text) strict".format(table_name)
-                )
-                self.conn.execute("drop table {}".format(table_name))
+            self.conn.execute(
+                "create table {} (name text) strict".format(table_name)
+            )
+            self.conn.execute("drop table {}".format(table_name))
             return True
         except Exception:
             return False
@@ -632,8 +643,7 @@ class Database:
                 self.execute("PRAGMA journal_mode=delete;")
 
     def _ensure_counts_table(self):
-        with self.conn:
-            self.execute(_COUNTS_TABLE_CREATE_SQL.format(self._counts_table_name))
+        self.execute(_COUNTS_TABLE_CREATE_SQL.format(self._counts_table_name))
 
     def enable_counts(self):
         """
@@ -667,14 +677,13 @@ class Database:
     def reset_counts(self):
         "Re-calculate cached counts for tables."
         tables = [table for table in self.tables if table.has_counts_triggers]
-        with self.conn:
-            self._ensure_counts_table()
-            counts_table = self[self._counts_table_name]
-            counts_table.delete_where()
-            counts_table.insert_all(
-                {"table": table.name, "count": table.execute_count()}
-                for table in tables
-            )
+        self._ensure_counts_table()
+        counts_table = self[self._counts_table_name]
+        counts_table.delete_where()
+        counts_table.insert_all(
+            {"table": table.name, "count": table.execute_count()}
+            for table in tables
+        )
 
     def execute_returning_dicts(
         self, sql: str, params: Optional[Union[Iterable, dict]] = None
@@ -1623,24 +1632,23 @@ class Table(Queryable):
         :param strict: Apply STRICT mode to table
         """
         columns = {name: value for (name, value) in columns.items()}
-        with self.db.conn:
-            self.db.create_table(
-                self.name,
-                columns,
-                pk=pk,
-                foreign_keys=foreign_keys,
-                column_order=column_order,
-                not_null=not_null,
-                defaults=defaults,
-                hash_id=hash_id,
-                hash_id_columns=hash_id_columns,
-                extracts=extracts,
-                if_not_exists=if_not_exists,
-                replace=replace,
-                ignore=ignore,
-                transform=transform,
-                strict=strict,
-            )
+        self.db.create_table(
+            self.name,
+            columns,
+            pk=pk,
+            foreign_keys=foreign_keys,
+            column_order=column_order,
+            not_null=not_null,
+            defaults=defaults,
+            hash_id=hash_id,
+            hash_id_columns=hash_id_columns,
+            extracts=extracts,
+            if_not_exists=if_not_exists,
+            replace=replace,
+            ignore=ignore,
+            transform=transform,
+            strict=strict,
+        )
         return self
 
     def duplicate(self, new_name: str) -> "Table":
@@ -1651,12 +1659,11 @@ class Table(Queryable):
         """
         if not self.exists():
             raise NoTable(f"Table {self.name} does not exist")
-        with self.db.conn:
-            sql = "CREATE TABLE [{new_table}] AS SELECT * FROM [{table}];".format(
-                new_table=new_name,
-                table=self.name,
-            )
-            self.db.execute(sql)
+        sql = "CREATE TABLE [{new_table}] AS SELECT * FROM [{table}];".format(
+            new_table=new_name,
+            table=self.name,
+        )
+        self.db.execute(sql)
         return self.db[new_name]
 
     def transform(
@@ -1714,12 +1721,11 @@ class Table(Queryable):
         try:
             if pragma_foreign_keys_was_on:
                 self.db.execute("PRAGMA foreign_keys=0;")
-            with self.db.conn:
-                for sql in sqls:
-                    self.db.execute(sql)
-                # Run the foreign_key_check before we commit
-                if pragma_foreign_keys_was_on:
-                    self.db.execute("PRAGMA foreign_key_check;")
+            for sql in sqls:
+                self.db.execute(sql)
+            # Run the foreign_key_check before we commit
+            if pragma_foreign_keys_was_on:
+                self.db.execute("PRAGMA foreign_key_check;")
         finally:
             if pragma_foreign_keys_was_on:
                 self.db.execute("PRAGMA foreign_keys=1;")
@@ -2317,8 +2323,7 @@ class Table(Queryable):
                 table_quoted=self.db.quote(self.name),
             )
         )
-        with self.db.conn:
-            self.db.conn.executescript(sql)
+        self.db.conn.executescript(sql)
         self.db.use_counts_table = True
 
     @property
@@ -2460,9 +2465,8 @@ class Table(Queryable):
         trigger_names = []
         for row in self.db.execute(sql).fetchall():
             trigger_names.append(row[0])
-        with self.db.conn:
-            for trigger_name in trigger_names:
-                self.db.execute("DROP TRIGGER IF EXISTS [{}]".format(trigger_name))
+        for trigger_name in trigger_names:
+            self.db.execute("DROP TRIGGER IF EXISTS [{}]".format(trigger_name))
         return self
 
     def rebuild_fts(self):
@@ -2655,8 +2659,7 @@ class Table(Queryable):
         sql = "delete from [{table}] where {wheres}".format(
             table=self.name, wheres=" and ".join(wheres)
         )
-        with self.db.conn:
-            self.db.execute(sql, pk_values)
+        self.db.execute(sql, pk_values)
         return self
 
     def delete_where(
@@ -2725,19 +2728,18 @@ class Table(Queryable):
         sql = "update [{table}] set {sets} where {wheres}".format(
             table=self.name, sets=", ".join(sets), wheres=" and ".join(wheres)
         )
-        with self.db.conn:
-            try:
+        try:
+            rowcount = self.db.execute(sql, args).rowcount
+        except OperationalError as e:
+            if alter and (" column" in e.args[0]):
+                # Attempt to add any missing columns, then try again
+                self.add_missing_columns([updates])
                 rowcount = self.db.execute(sql, args).rowcount
-            except OperationalError as e:
-                if alter and (" column" in e.args[0]):
-                    # Attempt to add any missing columns, then try again
-                    self.add_missing_columns([updates])
-                    rowcount = self.db.execute(sql, args).rowcount
-                else:
-                    raise
+            else:
+                raise
 
-            # TODO: Test this works (rolls back) - use better exception:
-            # assert rowcount == 1
+        # TODO: Test this works (rolls back) - use better exception:
+        # assert rowcount == 1
         self.last_pk = pk_values[0] if len(pks) == 1 else pk_values
         return self
 
@@ -2885,7 +2887,6 @@ class Table(Queryable):
             ignore,
         )
 
-#         with self.db.conn:
         result = None
         for query, params in queries_and_params:
             try:
