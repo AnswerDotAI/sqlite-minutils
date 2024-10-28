@@ -3151,7 +3151,6 @@ class Table(Queryable):
 
         if analyze:
             self.analyze()
-
         return self
 
     def upsert(
@@ -3297,7 +3296,7 @@ class Table(Queryable):
             try:
                 return rows[0][pk]
             except IndexError:
-                return self.insert(
+                data = self.insert(
                     combined_values,
                     pk=pk,
                     foreign_keys=foreign_keys,
@@ -3308,9 +3307,10 @@ class Table(Queryable):
                     conversions=conversions,
                     columns=columns,
                     strict=strict,
-                ).last_pk
+                )
+                return data.last_pk if hasattr(data, 'last_pk') else data['id']
         else:
-            pk = self.insert(
+            data = self.insert(
                 combined_values,
                 pk=pk,
                 foreign_keys=foreign_keys,
@@ -3321,7 +3321,8 @@ class Table(Queryable):
                 conversions=conversions,
                 columns=columns,
                 strict=strict,
-            ).last_pk
+            )
+            pk = data.last_pk if hasattr(data, 'last_pk') else data['id']
             self.create_index(lookup_values.keys(), unique=True)
             return pk
 
