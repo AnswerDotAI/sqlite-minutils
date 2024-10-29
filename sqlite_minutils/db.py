@@ -3308,7 +3308,7 @@ class Table(Queryable):
                     columns=columns,
                     strict=strict,
                 )
-                return data.last_pk if hasattr(data, 'last_pk') else data['id']
+                return data.last_pk if hasattr(data, 'last_pk') else data.get('_rowid_', data['id'])
         else:
             data = self.insert(
                 combined_values,
@@ -3322,7 +3322,7 @@ class Table(Queryable):
                 columns=columns,
                 strict=strict,
             )
-            pk = data.last_pk if hasattr(data, 'last_pk') else data['id']
+            pk = data.last_pk if hasattr(data, 'last_pk') else data.get('_rowid_', data['id'])
             self.create_index(lookup_values.keys(), unique=True)
             return pk
 
