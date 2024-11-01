@@ -839,6 +839,7 @@ class Database:
         single_pk = None
         if isinstance(pk, list) and len(pk) == 1 and isinstance(pk[0], str):
             pk = pk[0]
+        # If the pk is specified as a column name (pk='id')
         if isinstance(pk, str):
             single_pk = pk
             if pk not in [c[0] for c in column_items]:
@@ -2837,7 +2838,7 @@ class Table(Queryable):
             elif ignore:
                 or_what = "OR IGNORE "
             sql = """
-                INSERT {or_what}INTO [{table}] ({columns}) VALUES {rows};
+                INSERT {or_what}INTO [{table}] ({columns}) VALUES {rows} RETURNING *;
             """.strip().format(
                 or_what=or_what,
                 table=self.name,
@@ -2887,15 +2888,18 @@ class Table(Queryable):
             ignore,
         )
 
-        result = None
+        cursor = None
+        cursors = []
         for query, params in queries_and_params:
             try:
-                result = self.db.execute(query, tuple(params))
+                cursor = self.db.execute(query, tuple(params))
+                cursors.append(cursor)
             except OperationalError as e:
                 if alter and (" column" in e.args[0]):
                     # Attempt to add any missing columns, then try again
                     self.add_missing_columns(chunk)
-                    result = self.db.execute(query, params)
+                    cursor = self.db.execute(query, params)
+                    cursors.append(cursor)
                 elif e.args[0] == "too many SQL variables":
                     first_half = chunk[: len(chunk) // 2]
                     second_half = chunk[len(chunk) // 2 :]
@@ -2934,21 +2938,25 @@ class Table(Queryable):
 
                 else:
                     raise
-            if num_records_processed == 1:
-                rid = self.db.get_last_rowid()
-                if rid is not None:
-                    self.last_pk = self.last_rowid = rid
-                    # self.last_rowid will be 0 if a "INSERT OR IGNORE" happened
-                    if (hash_id or pk) and not upsert:
-                        row = list(self.rows_where("rowid = ?", [rid]))[0]
-                        if hash_id:
-                            self.last_pk = row[hash_id]
-                        elif isinstance(pk, str):
-                            self.last_pk = row[pk]
-                        else:
-                            self.last_pk = tuple(row[p] for p in pk)
+            # TODO: DRG Is this actually needed?
+            # if num_records_processed == 1:
+            #     rid = self.db.get_last_rowid()
+            #     if rid is not None:
+            #         self.last_pk = self.last_rowid = rid
+            #         # self.last_rowid will be 0 if a "INSERT OR IGNORE" happened
+            #         if (hash_id or pk) and not upsert:
+            #             row = list(self.rows_where("rowid = ?", [rid]))[0]
+            #             if hash_id:
+            #                 self.last_pk = row[hash_id]
+            #             elif isinstance(pk, str):
+            #                 self.last_pk = row[pk]
+            #             else:
+            #                 self.last_pk = tuple(row[p] for p in pk)
 
-        return
+        for cursor in cursors:
+            columns = [c[0] for c in cursor.description]
+            for row in cursor:
+                yield dict(zip(columns, row))
 
     def insert(
         self,
@@ -3133,7 +3141,7 @@ class Table(Queryable):
 
             first = False
 
-            self.insert_chunk(
+            results = self.insert_chunk(
                 alter,
                 extracts,
                 chunk,
@@ -3152,7 +3160,7 @@ class Table(Queryable):
         if analyze:
             self.analyze()
 
-        return self
+        return results
 
     def upsert(
         self,
