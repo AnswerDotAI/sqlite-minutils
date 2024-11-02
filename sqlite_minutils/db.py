@@ -404,6 +404,12 @@ class Database:
         ).strip()
         self.execute(attach_sql)
 
+    def fetchone(self, sql:str, where_args: Optional[Union[Iterable, dict]] = None):
+        """
+        Execute ``sql`` and return a single row result
+        """
+        return self.execute(sql, where_args or []).fetchone()[0]
+
     def query(
         self, sql: str, params: Optional[Union[Iterable, dict]] = None
     ) -> Generator[dict, None, None]:
