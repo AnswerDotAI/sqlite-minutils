@@ -1,5 +1,13 @@
 # Release notes
 
+## 4.0.0
+
+### New Features
+
+- NB: We are no longing basing our version numbers on sqlite-minutils, so we have bumped the major version number
+- Add `db.fetchone`
+
+
 ## 3.37.0.post4
 
 ### Breaking changes
