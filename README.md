@@ -238,13 +238,36 @@ sqlite-minutils is different from sqlite-utils in that write actions
 affected without relying on `last_rowid`. It does this through the
 `RETURNING` SQL keyword.
 
+Testing `INSERT`, including preserving `last_pk` attribute
+
 ``` python
 user = users.insert(dict(name='Turkey', age=2, pwd='gravy'))
 user
 ```
 
-    {'id': 8, 'name': 'Turkey', 'age': 2, 'pwd': 'gravy'}
+    {'id': 6, 'name': 'Turkey', 'age': 2, 'pwd': 'gravy'}
 
 ``` python
 test(user['name'], 'Turkey', equals)
+```
+
+Testing `UPDATE`, including preserving `last_pk` attribute
+
+``` python
+user = users.insert(dict(name='Flamingo', age=12, pwd='pink'))
+user
+```
+
+    {'id': 8, 'name': 'Flamingo', 'age': 12, 'pwd': 'pink'}
+
+``` python
+user = users.update(user['id'], dict(name='Kiwi', pwd='pumpkin'))
+user
+```
+
+    {'id': 7, 'name': 'Kiwi', 'age': 12, 'pwd': 'pumpkin'}
+
+``` python
+test(user['name'], 'Kiwi', equals)
+test(users.last_pk, user['id'], equals)
 ```
