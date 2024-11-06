@@ -2700,7 +2700,7 @@ class Table(Queryable):
         updates: Optional[dict] = None,
         alter: bool = False,
         conversions: Optional[dict] = None,
-    ) -> List[Dict]:
+    ) -> Dict:
         """
         Execute a SQL ``UPDATE`` against the specified row.
 
@@ -2746,14 +2746,12 @@ class Table(Queryable):
             else:
                 raise
 
-        records = []
-        columns = [c[0] for c in cursor.description]
-        record = dict(zip(columns, cursor.fetchone()))
-
         # TODO: Test this works (rolls back) - use better exception:
         # assert rowcount == 1
         self.last_pk = pk_values[0] if len(pks) == 1 else pk_values
-        return record
+
+        columns = [c[0] for c in cursor.description]
+        return dict(zip(columns, cursor.fetchone()))
 
     def build_insert_queries_and_params(
         self,
