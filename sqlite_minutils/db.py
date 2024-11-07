@@ -2901,7 +2901,15 @@ class Table(Queryable):
         for query, params in queries_and_params:
             cursor = self.db.execute(query, tuple(params))
             columns = [c[0] for c in cursor.description]
-            record = dict(zip(columns, cursor.fetchone()))
+            result = cursor.fetchone()
+            # if result is None:
+            #     # On UPSERT zip may fail on TypeError due to on first iteration
+            #     # cursor.fetchone() returning None. If this happens, continue
+            #     continue
+            try:              
+                record = dict(zip(columns, result))       
+            except TypeError:
+                continue
             records.append(record)
 
             # Preserve old self.last_pk functionality
@@ -3136,7 +3144,7 @@ class Table(Queryable):
         conversions=DEFAULT,
         columns=DEFAULT,
         strict=DEFAULT,
-    ) -> "Table":
+    ) -> Dict:
         """
         Like ``.insert()`` but performs an ``UPSERT``, where records are inserted if they do
         not exist and updated if they DO exist, based on matching against their primary key.
@@ -3157,7 +3165,7 @@ class Table(Queryable):
             conversions=conversions,
             columns=columns,
             strict=strict,
-        )
+        )[0]
 
     def upsert_all(
         self,
@@ -3176,7 +3184,7 @@ class Table(Queryable):
         columns=DEFAULT,
         analyze=False,
         strict=DEFAULT,
-    ) -> "Table":
+    ) -> List[Dict]:
         """
         Like ``.upsert()`` but can be applied to a list of records.
         """
