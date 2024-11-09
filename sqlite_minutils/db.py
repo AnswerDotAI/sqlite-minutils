@@ -2808,7 +2808,8 @@ class Table(Queryable):
                 # them since it ignores the resulting integrity errors
                 if not_null:
                     placeholders.extend(not_null)
-                sql = "INSERT OR IGNORE INTO [{table}]({cols}) VALUES({placeholders}) RETURNING *;".format(
+                # Don't use RETURNING here because we get the results from the update
+                sql = "INSERT OR IGNORE INTO [{table}]({cols}) VALUES({placeholders});".format(
                     table=self.name,
                     cols=", ".join(["[{}]".format(p) for p in placeholders]),
                     placeholders=", ".join(["?" for p in placeholders]),
@@ -2839,6 +2840,8 @@ class Table(Queryable):
                     self.last_pk = tuple(record[pk] for pk in pks)
                     if len(self.last_pk) == 1:
                         self.last_pk = self.last_pk[0]
+
+            # import pdb; pdb.set_trace()                        
 
         else:
             or_what = ""
@@ -2900,6 +2903,9 @@ class Table(Queryable):
         records = []
         for query, params in queries_and_params:
             cursor = self.db.execute(query, tuple(params))
+            # Query is coming from the insert part of an upsert so we skip
+            # this iteration
+            if cursor.description is None and upsert is True: continue
             columns = [c[0] for c in cursor.description]
             result = cursor.fetchone()
             # if result is None:
@@ -2975,6 +2981,7 @@ class Table(Queryable):
           ``{"age": int, "weight": float}``.
         :param strict: Boolean, apply STRICT mode if creating the table.
         """
+
         return self.insert_all(
             [record],
             pk=pk,
@@ -3126,7 +3133,6 @@ class Table(Queryable):
 
         if analyze:
             self.analyze()
-
         return records
 
     def upsert(
