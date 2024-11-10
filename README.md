@@ -22,12 +22,6 @@
 
 ## Use
 
-``` python
-from fastcore.utils import *
-from fastcore.test import *
-from typing import Any
-```
-
 First, import the sqlite-miniutils library. Through the use of the
 **all** attribute in our Python modules by using `import *` we only
 bring in the `Database`, `Queryable`, `Table`, `View` classes. There’s
@@ -113,7 +107,7 @@ users.insert(dict(name='Pigeon', age=3, pwd='keptsecret'))
 users.insert(dict(name='Eagle', age=7, pwd='s3cr3t'))
 ```
 
-    {'id': 5, 'name': 'Eagle', 'age': 7, 'pwd': 's3cr3t'}
+    <Table Users (id, name, age, pwd)>
 
 A simple unfiltered select can be executed using `rows` property on the
 table object.
@@ -122,7 +116,7 @@ table object.
 users.rows
 ```
 
-    <generator object Queryable.rows_where>
+    <generator object Queryable.rows_where at 0x10849f6f0>
 
 Let’s iterate over that generator to see the results:
 
@@ -175,76 +169,3 @@ except ValueError as e:
 ```
 
     Cannot use offset without limit
-
-## Transactions
-
-If you have any SQL calls outside an explicit transaction, they are
-committed instantly.
-
-To group 2 or more queries together into 1 transaction, wrap them in a
-BEGIN and COMMIT, executing ROLLBACK if an exception is caught:
-
-``` python
-users.get(1)
-```
-
-    {'id': 1, 'name': 'Raven', 'age': 8, 'pwd': 's3cret'}
-
-``` python
-db.begin()
-try:
-    users.delete([1])
-    db.execute('FNOOORD')
-    db.commit()
-except Exception as e:
-    print(e)
-    db.rollback()
-```
-
-    near "FNOOORD": syntax error
-
-Because the transaction was rolled back, the user was not deleted:
-
-``` python
-users.get(1)
-```
-
-    {'id': 1, 'name': 'Raven', 'age': 8, 'pwd': 's3cret'}
-
-Let’s do it again, but without the DB error, to check the transaction is
-successful:
-
-``` python
-db.begin()
-try:
-    users.delete([1])
-    db.commit()
-except Exception as e: db.rollback()
-```
-
-``` python
-try:
-    users.get(1)
-    print("Delete failed!")
-except: print("Delete succeeded!")
-```
-
-    Delete succeeded!
-
-## Returning
-
-sqlite-minutils is different from sqlite-utils in that write actions
-(`INSERT`, `UPDATE`, `UPSERT`) return back the record(s) they have
-affected without relying on `last_rowid`. It does this through the
-`RETURNING` SQL keyword.
-
-``` python
-user = users.insert(dict(name='Turkey', age=2, pwd='gravy'))
-user
-```
-
-    {'id': 8, 'name': 'Turkey', 'age': 2, 'pwd': 'gravy'}
-
-``` python
-test(user['name'], 'Turkey', equals)
-```
