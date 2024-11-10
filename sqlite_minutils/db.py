@@ -2877,7 +2877,7 @@ class Table(Queryable):
         num_records_processed,
         replace,
         ignore,
-    ) -> List[Dict]:
+    ):
         queries_and_params = self.build_insert_queries_and_params(
             extracts,
             chunk,
@@ -2893,24 +2893,68 @@ class Table(Queryable):
             ignore,
         )
 
-        records = []
+        result = None
         for query, params in queries_and_params:
-            cursor = self.db.execute(query, tuple(params))
-            columns = [c[0] for c in cursor.description]
-            record = dict(zip(columns, cursor.fetchone()))
-            records.append(record)
+            try:
+                result = self.db.execute(query, tuple(params))
+            except OperationalError as e:
+                if alter and (" column" in e.args[0]):
+                    # Attempt to add any missing columns, then try again
+                    self.add_missing_columns(chunk)
+                    result = self.db.execute(query, params)
+                elif e.args[0] == "too many SQL variables":
+                    first_half = chunk[: len(chunk) // 2]
+                    second_half = chunk[len(chunk) // 2 :]
 
-            # Preserve old self.last_pk functionality
-            if (hash_id or pk) and not upsert:
-                if hash_id:
-                    self.last_pk = row[hash_id]
-                elif isinstance(pk, str):
-                    self.last_pk = row[pk]
+                    self.insert_chunk(
+                        alter,
+                        extracts,
+                        first_half,
+                        all_columns,
+                        hash_id,
+                        hash_id_columns,
+                        upsert,
+                        pk,
+                        not_null,
+                        conversions,
+                        num_records_processed,
+                        replace,
+                        ignore,
+                    )
+
+                    self.insert_chunk(
+                        alter,
+                        extracts,
+                        second_half,
+                        all_columns,
+                        hash_id,
+                        hash_id_columns,
+                        upsert,
+                        pk,
+                        not_null,
+                        conversions,
+                        num_records_processed,
+                        replace,
+                        ignore,
+                    )
+
                 else:
-                    self.last_pk = tuple(row[p] for p in pk)
-            self.last_rowid = self.last_pk            
+                    raise
+            if num_records_processed == 1:
+                rid = self.db.get_last_rowid()
+                if rid is not None:
+                    self.last_pk = self.last_rowid = rid
+                    # self.last_rowid will be 0 if a "INSERT OR IGNORE" happened
+                    if (hash_id or pk) and not upsert:
+                        row = list(self.rows_where("rowid = ?", [rid]))[0]
+                        if hash_id:
+                            self.last_pk = row[hash_id]
+                        elif isinstance(pk, str):
+                            self.last_pk = row[pk]
+                        else:
+                            self.last_pk = tuple(row[p] for p in pk)
 
-        return records
+        return
 
     def insert(
         self,
@@ -2929,7 +2973,7 @@ class Table(Queryable):
         conversions: Optional[Union[Dict[str, str], Default]] = DEFAULT,
         columns: Optional[Union[Dict[str, Any], Default]] = DEFAULT,
         strict: Optional[Union[bool, Default]] = DEFAULT,
-    ) -> Dict:
+    ) -> "Table":
         """
         Insert a single record into the table. The table will be created with a schema that matches
         the inserted record if it does not already exist, see :ref:`python_api_creating_tables`.
@@ -2979,7 +3023,7 @@ class Table(Queryable):
             conversions=conversions,
             columns=columns,
             strict=strict,
-        )[0]
+        )
 
     def insert_all(
         self,
@@ -3002,7 +3046,7 @@ class Table(Queryable):
         upsert=False,
         analyze=False,
         strict=DEFAULT,
-    ) -> List[Dict]:
+    ) -> "Table":
         """
         Like ``.insert()`` but takes a list of records and ensures that the table
         that it creates (if table does not exist) has columns for ALL of that data.
@@ -3061,7 +3105,6 @@ class Table(Queryable):
         self.last_pk = None
         if truncate and self.exists():
             self.db.execute("DELETE FROM [{}];".format(self.name))
-        records = []
         for chunk in chunks(itertools.chain([first_record], records), batch_size):
             chunk = list(chunk)
             num_records_processed += len(chunk)
@@ -3096,7 +3139,7 @@ class Table(Queryable):
 
             first = False
 
-            records.extend(self.insert_chunk(
+            self.insert_chunk(
                 alter,
                 extracts,
                 chunk,
@@ -3110,12 +3153,12 @@ class Table(Queryable):
                 num_records_processed,
                 replace,
                 ignore,
-            ))
+            )
 
         if analyze:
             self.analyze()
 
-        return records
+        return self
 
     def upsert(
         self,
