@@ -2804,7 +2804,7 @@ class Table(Queryable):
                 # them since it ignores the resulting integrity errors
                 if not_null:
                     placeholders.extend(not_null)
-                sql = "INSERT OR IGNORE INTO [{table}]({cols}) VALUES({placeholders}) RETURNING *;".format(
+                sql = "INSERT OR IGNORE INTO [{table}]({cols}) VALUES({placeholders});".format(
                     table=self.name,
                     cols=", ".join(["[{}]".format(p) for p in placeholders]),
                     placeholders=", ".join(["?" for p in placeholders]),
@@ -2815,7 +2815,7 @@ class Table(Queryable):
                 # UPDATE [book] SET [name] = 'Programming' WHERE [id] = 1001;
                 set_cols = [col for col in all_columns if col not in pks]
                 if set_cols:
-                    sql2 = "UPDATE [{table}] SET {pairs} WHERE {wheres} RETURNING *".format(
+                    sql2 = "UPDATE [{table}] SET {pairs} WHERE {wheres}".format(
                         table=self.name,
                         pairs=", ".join(
                             "[{}] = {}".format(col, conversions.get(col, "?"))
@@ -2843,7 +2843,7 @@ class Table(Queryable):
             elif ignore:
                 or_what = "OR IGNORE "
             sql = """
-                INSERT {or_what}INTO [{table}] ({columns}) VALUES {rows} RETURNING *;
+                INSERT {or_what}INTO [{table}] ({columns}) VALUES {rows};
             """.strip().format(
                 or_what=or_what,
                 table=self.name,
