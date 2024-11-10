@@ -2700,7 +2700,7 @@ class Table(Queryable):
         updates: Optional[dict] = None,
         alter: bool = False,
         conversions: Optional[dict] = None,
-    ) -> Dict:
+    ) -> "Table":
         """
         Execute a SQL ``UPDATE`` against the specified row.
 
@@ -2731,27 +2731,23 @@ class Table(Queryable):
             args.append(jsonify_if_needed(value))
         wheres = ["[{}] = ?".format(pk_name) for pk_name in pks]
         args.extend(pk_values)
-        sql = "update [{table}] set {sets} where {wheres} returning *".format(
+        sql = "update [{table}] set {sets} where {wheres}".format(
             table=self.name, sets=", ".join(sets), wheres=" and ".join(wheres)
         )
         try:
-            cursor = self.db.execute(sql, args)
-            cursor.rowcount
+            rowcount = self.db.execute(sql, args).rowcount
         except OperationalError as e:
             if alter and (" column" in e.args[0]):
                 # Attempt to add any missing columns, then try again
                 self.add_missing_columns([updates])
-                cursor = self.db.execute(sql, args)
-                cursor.rowcount
+                rowcount = self.db.execute(sql, args).rowcount
             else:
                 raise
 
         # TODO: Test this works (rolls back) - use better exception:
         # assert rowcount == 1
         self.last_pk = pk_values[0] if len(pks) == 1 else pk_values
-
-        columns = [c[0] for c in cursor.description]
-        return dict(zip(columns, cursor.fetchone()))
+        return self
 
     def build_insert_queries_and_params(
         self,
