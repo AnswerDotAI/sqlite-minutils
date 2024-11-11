@@ -2803,6 +2803,24 @@ class Table(Queryable):
             self.last_pk = None
             for record_values in values:
                 record = dict(zip(all_columns, record_values))
+                sql = f"INSERT OR IGNORE INTO [{self.name}] ({all_columns}) VALUES ({record_values}) "
+                sql += f"ON CONFLICT ({','.join(pks)}) "
+                # TODO add the columns and values
+                # sql += f"WHERE excluded.validDate>phonebook2.validDate;"
+                set_cols = [col for col in all_columns if col not in pks]
+                if set_cols:
+                    sql += 'DO UPDATE SET '
+                    sql +=  ", ".join(
+                            "[{}] = {}".format(col, conversions.get(col, "?"))
+                            for col in set_cols
+                        )
+
+                queries_and_params.append(
+                    (sql, [record[col] for col in pks] + ["" for _ in (not_null or [])])
+                )                    
+                import pdb;pdb.set_trace()
+
+
                 placeholders = list(pks)
                 # Need to populate not-null columns too, or INSERT OR IGNORE ignores
                 # them since it ignores the resulting integrity errors
@@ -2840,8 +2858,7 @@ class Table(Queryable):
                     self.last_pk = tuple(record[pk] for pk in pks)
                     if len(self.last_pk) == 1:
                         self.last_pk = self.last_pk[0]
-
-            # import pdb; pdb.set_trace()                        
+                      
 
         else:
             or_what = ""
