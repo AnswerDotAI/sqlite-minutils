@@ -421,6 +421,7 @@ class Database:
           parameters, or a dictionary for ``where id = :id``
         """
         cursor = self.execute(sql, tuple(params or tuple()))
+        if cursor.description is None: return []
         keys = [d[0] for d in cursor.description]
         for row in cursor:
             yield dict(zip(keys, row))
