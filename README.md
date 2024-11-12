@@ -29,6 +29,7 @@ no risk of namespace pollution.
 
 ``` python
 from sqlite_minutils.db import *
+from sqlite_minutils.db import NotFoundError
 ```
 
 Then we create a SQLite database. For the sake of convienance we’re
@@ -116,7 +117,7 @@ table object.
 users.rows
 ```
 
-    <generator object Queryable.rows_where at 0x10849f6f0>
+    <generator object Queryable.rows_where>
 
 Let’s iterate over that generator to see the results:
 
@@ -169,3 +170,186 @@ except ValueError as e:
 ```
 
     Cannot use offset without limit
+
+## Updates: Basics
+
+### db.query()
+
+When you run an update query with `db.query()`, it returns nothing
+unless you explicitly add `returning *` like this:
+
+``` python
+list(db.query("update users set pwd='hyperseeecret' where id=1 returning *"))
+```
+
+    [{'id': 1, 'name': 'Raven', 'age': 9, 'pwd': 'hyperseeecret'}]
+
+If you don’t add `returning *`, the update still happens, even though
+nothing’s returned:
+
+``` python
+list(db.query("update users set pwd='secrethideaway' where id=2"))
+```
+
+    []
+
+Whether or not you have the `returning` keyword in a query, as you can
+see here the update does happen.
+
+``` python
+[o for o in users.rows]
+```
+
+    [{'id': 1, 'name': 'Raven', 'age': 9, 'pwd': 'extremes3cret'},
+     {'id': 2, 'name': 'Magpie', 'age': 5, 'pwd': 'secrethideaway'},
+     {'id': 3, 'name': 'Crow', 'age': 12, 'pwd': 'verysecret'},
+     {'id': 4, 'name': 'Pigeon', 'age': 3, 'pwd': 'keptsecret'},
+     {'id': 5, 'name': 'Eagle', 'age': 7, 'pwd': 's3cr3t'}]
+
+### tablename.update()
+
+You can also use `<tablename>.update()` to update 1 or more fields for a
+given record:
+
+``` python
+users.update(1, {'pwd': 'extremes3cret'})
+```
+
+    <Table Users (id, name, age, pwd)>
+
+``` python
+[o for o in users.rows]
+```
+
+    [{'id': 1, 'name': 'Raven', 'age': 9, 'pwd': 'extremes3cret'},
+     {'id': 2, 'name': 'Magpie', 'age': 5, 'pwd': 'supersecret'},
+     {'id': 3, 'name': 'Crow', 'age': 12, 'pwd': 'verysecret'},
+     {'id': 4, 'name': 'Pigeon', 'age': 3, 'pwd': 'keptsecret'},
+     {'id': 5, 'name': 'Eagle', 'age': 7, 'pwd': 's3cr3t'}]
+
+## Updates: Doing Nothing
+
+Here are examples of updates that do nothing, because there’s nothing to
+update!
+
+Calling `<table name>.update()` with an empty dict:
+
+``` python
+users.update(1, {})
+```
+
+    <Table Users (id, name, age, pwd)>
+
+``` python
+[o for o in users.rows]
+```
+
+    [{'id': 1, 'name': 'Raven', 'age': 9, 'pwd': 'extremes3cret'},
+     {'id': 2, 'name': 'Magpie', 'age': 5, 'pwd': 'secrethideaway'},
+     {'id': 3, 'name': 'Crow', 'age': 12, 'pwd': 'verysecret'},
+     {'id': 4, 'name': 'Pigeon', 'age': 3, 'pwd': 'keptsecret'},
+     {'id': 5, 'name': 'Eagle', 'age': 7, 'pwd': 's3cr3t'}]
+
+Updating a record with the same values it currently has already:
+
+``` python
+users.update(1, {'name': 'Raven', 'age': 9})
+```
+
+    <Table Users (id, name, age, pwd)>
+
+``` python
+[o for o in users.rows]
+```
+
+    [{'id': 1, 'name': 'Raven', 'age': 9, 'pwd': 'extremes3cret'},
+     {'id': 2, 'name': 'Magpie', 'age': 5, 'pwd': 'secrethideaway'},
+     {'id': 3, 'name': 'Crow', 'age': 12, 'pwd': 'verysecret'},
+     {'id': 4, 'name': 'Pigeon', 'age': 3, 'pwd': 'keptsecret'},
+     {'id': 5, 'name': 'Eagle', 'age': 7, 'pwd': 's3cr3t'}]
+
+## Updates: Clearing Values
+
+Updating a record with a None value for a column clears that column:
+
+``` python
+users.update(1, {'name': None})
+```
+
+    <Table Users (id, name, age, pwd)>
+
+``` python
+[o for o in users.rows]
+```
+
+    [{'id': 1, 'name': None, 'age': 9, 'pwd': 'extremes3cret'},
+     {'id': 2, 'name': 'Magpie', 'age': 5, 'pwd': 'secrethideaway'},
+     {'id': 3, 'name': 'Crow', 'age': 12, 'pwd': 'verysecret'},
+     {'id': 4, 'name': 'Pigeon', 'age': 3, 'pwd': 'keptsecret'},
+     {'id': 5, 'name': 'Eagle', 'age': 7, 'pwd': 's3cr3t'}]
+
+## Updates: Errors
+
+Updating a non-existent ID record:
+
+``` python
+try: users.update(999, {'name': 'Test'})
+except NotFoundError: print("Record not found")
+```
+
+    Record not found
+
+## Transactions
+
+If you have any SQL calls outside an explicit transaction, they are
+committed instantly.
+
+To group 2 or more queries together into 1 transaction, wrap them in a
+BEGIN and COMMIT, executing ROLLBACK if an exception is caught:
+
+``` python
+users.get(1)
+```
+
+    {'id': 1, 'name': 'Raven', 'age': 8, 'pwd': 's3cret'}
+
+``` python
+db.begin()
+try:
+    users.delete([1])
+    db.execute('FNOOORD')
+    db.commit()
+except Exception as e:
+    print(e)
+    db.rollback()
+```
+
+    near "FNOOORD": syntax error
+
+Because the transaction was rolled back, the user was not deleted:
+
+``` python
+users.get(1)
+```
+
+    {'id': 1, 'name': 'Raven', 'age': 8, 'pwd': 's3cret'}
+
+Let’s do it again, but without the DB error, to check the transaction is
+successful:
+
+``` python
+db.begin()
+try:
+    users.delete([1])
+    db.commit()
+except Exception as e: db.rollback()
+```
+
+``` python
+try:
+    users.get(1)
+    print("Delete failed!")
+except: print("Delete succeeded!")
+```
+
+    Delete succeeded!
