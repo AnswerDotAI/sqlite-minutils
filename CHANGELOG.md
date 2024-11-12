@@ -1,5 +1,12 @@
 # Release notes
 
+## 4.0.1
+
+### Bugs fixed
+
+- Handle empty updates correctly
+
+
 ## 4.0.0
 
 ### New Features
