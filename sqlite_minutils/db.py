@@ -2760,6 +2760,9 @@ class Table(Queryable):
         replace,
         ignore,
     ):
+        # Caching of table converted conversions from a dict to a tuple. Convert it back
+        if isinstance(conversions, Tuple): conversions = dict(conversions)
+
         # values is the list of insert data that is passed to the
         # .execute() method - but some of them may be replaced by
         # new primary keys if we are extracting any columns.
