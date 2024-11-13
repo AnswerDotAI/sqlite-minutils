@@ -2889,10 +2889,14 @@ class Table(Queryable):
             ignore,
         )
 
-        result = None
+        records = []
         for query, params in queries_and_params:
             try:
-                result = self.db.execute(query, tuple(params))
+                cursor = self.db.execute(query, tuple(params))
+                if cursor.description is None: continue
+                columns = [d[0] for d in cursor.description]
+                for row in cursor:
+                    records.append(dict(zip(columns, row)))
             except OperationalError as e:
                 if alter and (" column" in e.args[0]):
                     # Attempt to add any missing columns, then try again
@@ -2937,8 +2941,9 @@ class Table(Queryable):
                 else:
                     raise
             if num_records_processed == 1:
-                rid = self.db.get_last_rowid()
-                if rid is not None:
+                if upsert and isinstance(pk, (List, Tuple)) and len(records) == 1:
+                    self.last_pk = records[0].values()
+                elif (rid := self.db.get_last_rowid()) is not None:
                     self.last_pk = self.last_rowid = rid
                     # self.last_rowid will be 0 if a "INSERT OR IGNORE" happened
                     if (hash_id or pk) and not upsert:
