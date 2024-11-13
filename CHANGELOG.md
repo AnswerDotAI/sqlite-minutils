@@ -1,5 +1,12 @@
 # Release notes
 
+## 4.0.2
+
+### Bugs fixed
+
+- execute does not work with named params
+
+
 ## 4.0.1
 
 ### Bugs fixed
