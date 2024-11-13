@@ -1290,7 +1290,7 @@ class Queryable:
             raise ValueError("Cannot use offset without limit")
         if offset is not None:
             sql += f" offset {offset}"
-        cursor = self.db.execute(sql, tuple(where_args or []))
+        cursor = self.db.execute(sql, where_args or [])
         columns = [c[0] for c in cursor.description]
         for row in cursor:
             yield dict(zip(columns, row))
@@ -2941,7 +2941,6 @@ class Table(Queryable):
                 else:
                     raise
             if num_records_processed == 1:
-                # raise Exception
                 if upsert and isinstance(pk, (List, Tuple)) and len(records) == 1:
                     self.last_pk = tuple([y for x,y in records[0].items() if x in pk])
                 elif upsert and hash_id and len(records) > 0:
