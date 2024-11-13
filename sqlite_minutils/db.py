@@ -2800,7 +2800,7 @@ class Table(Queryable):
                 # them since it ignores the resulting integrity errors
                 if not_null:
                     placeholders.extend(not_null)
-                sql = "INSERT OR IGNORE INTO [{table}]({cols}) VALUES({placeholders});".format(
+                sql = "INSERT OR IGNORE INTO [{table}]({cols}) VALUES({placeholders}) RETURNING *;".format(
                     table=self.name,
                     cols=", ".join(["[{}]".format(p) for p in placeholders]),
                     placeholders=", ".join(["?" for p in placeholders]),
@@ -2811,7 +2811,7 @@ class Table(Queryable):
                 # UPDATE [book] SET [name] = 'Programming' WHERE [id] = 1001;
                 set_cols = [col for col in all_columns if col not in pks]
                 if set_cols:
-                    sql2 = "UPDATE [{table}] SET {pairs} WHERE {wheres}".format(
+                    sql2 = "UPDATE [{table}] SET {pairs} WHERE {wheres} RETURNING *".format(
                         table=self.name,
                         pairs=", ".join(
                             "[{}] = {}".format(col, conversions.get(col, "?"))
@@ -2839,7 +2839,7 @@ class Table(Queryable):
             elif ignore:
                 or_what = "OR IGNORE "
             sql = """
-                INSERT {or_what}INTO [{table}] ({columns}) VALUES {rows};
+                INSERT {or_what}INTO [{table}] ({columns}) VALUES {rows} RETURNING *;
             """.strip().format(
                 or_what=or_what,
                 table=self.name,
@@ -2942,7 +2942,7 @@ class Table(Queryable):
                     raise
             if num_records_processed == 1:
                 if upsert and isinstance(pk, (List, Tuple)) and len(records) == 1:
-                    self.last_pk = records[0].values()
+                    self.last_pk = tuple([y for x,y in records[0].items() if x in pk])
                 elif (rid := self.db.get_last_rowid()) is not None:
                     self.last_pk = self.last_rowid = rid
                     # self.last_rowid will be 0 if a "INSERT OR IGNORE" happened
@@ -2954,7 +2954,6 @@ class Table(Queryable):
                             self.last_pk = row[pk]
                         else:
                             self.last_pk = tuple(row[p] for p in pk)
-
         return
 
     def insert(
