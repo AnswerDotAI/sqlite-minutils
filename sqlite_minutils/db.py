@@ -451,14 +451,19 @@ class Database:
             self._tracer(sql, None)
         return self.conn.executescript(sql)
 
+    def __hash__(self): return hash(self.conn)
+
     def convert_lists_to_tuples(function):
-        """functool module cache decorator doesn't work with lists, so this decorator
-        converts all lists to tuples before calling the function, and then converts
-        any lists in the result back to tuples.
-        """
+        """functool module cache decorator doesn't work with lists, sets, or dicts, so this decorator
+        converts them to tuples before calling the function, and then converts
+        any lists in the result back to tuples."""
         def wrapper(*args, **kwargs):
-            args = tuple(tuple(arg) if isinstance(arg, list) else arg for arg in args)
-            kwargs = {k: tuple(v) if isinstance(v, list) else v for k, v in kwargs.items()}
+            def to_hashable(v):
+                if isinstance(v, (list,set)): return tuple(v)
+                if isinstance(v, dict): return tuple(v.items())
+                return v
+            args = tuple(to_hashable(arg) for arg in args)
+            kwargs = {k:to_hashable(v) for k,v in kwargs.items()}
             result = function(*args, **kwargs)
             return tuple(result) if isinstance(result, list) else result
         return wrapper
@@ -1911,7 +1916,6 @@ class Table(Queryable):
         # Rename the new one
         sqls.append( "ALTER TABLE [{}] RENAME TO [{}];".format(new_table_name, self.name))
         # Re-add existing indexes
-        aa = self.db.q("""SELECT * FROM sqlite_master WHERE type = 'index'""")
         for index in self.indexes:
             if index.origin not in ("pk"):
                 st = """SELECT sql FROM sqlite_master WHERE type = 'index' AND name = :index_name;"""
