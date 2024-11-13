@@ -2941,11 +2941,18 @@ class Table(Queryable):
                 else:
                     raise
             if num_records_processed == 1:
+                # raise Exception
                 if upsert and isinstance(pk, (List, Tuple)) and len(records) == 1:
                     self.last_pk = tuple([y for x,y in records[0].items() if x in pk])
+                elif upsert and hash_id and len(records) > 0:
+                    # There should only be one record returned but since sqlite-minutils
+                    # didn't historically use RETURNING * there is logic we need to work
+                    # around for multiple queries/records are returned for what should
+                    # be single SQL call operations.
+                    self.last_pk = records[0][hash_id]
                 elif (rid := self.db.get_last_rowid()) is not None:
                     self.last_pk = self.last_rowid = rid
-                    # self.last_rowid will be 0 if a "INSERT OR IGNORE" happened
+                    # self.last_rowid will be 0 if a "INSERT OR IGNORE" happened                
                     if (hash_id or pk) and not upsert:
                         row = list(self.rows_where("rowid = ?", [rid]))[0]
                         if hash_id:
