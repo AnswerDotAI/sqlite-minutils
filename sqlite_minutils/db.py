@@ -436,12 +436,10 @@ class Database:
         :param parameters: Parameters to use in that query - an iterable for ``where id = ?``
           parameters, or a dictionary for ``where id = :id``
         """
-        if self._tracer:
-            self._tracer(sql, parameters)
-        if parameters is not None:
-            return self.conn.execute(sql, tuple(parameters))
-        else:
-            return self.conn.execute(sql)
+        if self._tracer: self._tracer(sql, parameters)
+        if isinstance(parameters, list): parameters = tuple(parameters)
+        if parameters: return self.conn.execute(sql, parameters)
+        else: return self.conn.execute(sql)
 
     def executescript(self, sql: str) -> sqlite3.Cursor:
         """
@@ -1908,23 +1906,16 @@ class Table(Queryable):
         )
         sqls.append(copy_sql)
         # Drop (or keep) the old table
-        if keep_table:
-            sqls.append(
-                "ALTER TABLE [{}] RENAME TO [{}];".format(self.name, keep_table)
-            )
-        else:
-            sqls.append("DROP TABLE [{}];".format(self.name))
+        if keep_table: sqls.append( "ALTER TABLE [{}] RENAME TO [{}];".format(self.name, keep_table))
+        else: sqls.append("DROP TABLE [{}];".format(self.name))
         # Rename the new one
-        sqls.append(
-            "ALTER TABLE [{}] RENAME TO [{}];".format(new_table_name, self.name)
-        )
+        sqls.append( "ALTER TABLE [{}] RENAME TO [{}];".format(new_table_name, self.name))
         # Re-add existing indexes
+        aa = self.db.q("""SELECT * FROM sqlite_master WHERE type = 'index'""")
         for index in self.indexes:
             if index.origin not in ("pk"):
-                index_sql = self.db.execute(
-                    """SELECT sql FROM sqlite_master WHERE type = 'index' AND name = :index_name;""",
-                    {"index_name": index.name},
-                ).fetchall()[0][0]
+                st = """SELECT sql FROM sqlite_master WHERE type = 'index' AND name = :index_name;"""
+                index_sql = self.db.execute(st, {"index_name": index.name},).fetchall()[0][0]
                 assert index_sql is not None, (
                     f"Index '{index}' on table '{self.name}' does not have a "
                     "CREATE INDEX statement. You must manually drop this index prior to running this "
