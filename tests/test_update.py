@@ -6,7 +6,21 @@ import pytest
 from sqlite_minutils.db import NotFoundError
 
 
+## Updates where nothing changes
+
+def test_update_no_change(fresh_db):
+    "Test updating a row with the same values it already has"
+    table = fresh_db["table"]
+    table.insert({"foo": "bar"})
+    table.update(1, {"foo": "bar"})
+    assert [{"foo": "bar"}] == list(table.rows)
+    table.update(1, {})
+    assert [{"foo": "bar"}] == list(table.rows)
+
+## Updates where something changes
+
 def test_update_rowid_table(fresh_db):
+    "Test updating a row that just got inserted, using the inserted row's last_pk as rowid"
     table = fresh_db["table"]
     rowid = table.insert({"foo": "bar"}).last_pk
     table.update(rowid, {"foo": "baz"})
@@ -14,6 +28,7 @@ def test_update_rowid_table(fresh_db):
 
 
 def test_update_pk_table(fresh_db):
+    "Like test_update_rowid_table, but with a user-specified primary key"
     table = fresh_db["table"]
     pk = table.insert({"foo": "bar", "id": 5}, pk="id").last_pk
     assert 5 == pk
