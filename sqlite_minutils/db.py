@@ -3652,10 +3652,13 @@ def jsonify_if_needed(value):
 
 
 def resolve_extracts(
-    extracts: Optional[Union[Dict[str, str], List[str], Tuple[str]]]
+    extracts: Optional[Union[Dict[str, str], List[str], Tuple[str], Tuple[Tuple[str]]]]
 ) -> dict:
     if extracts is None:
         extracts = {}
+    if isinstance(extracts, (list, tuple)) and len(extracts) and any(isinstance(x, (list, tuple)) for x in extracts): 
+        # Handles nested lists/tuples
+        extracts = dict(extracts)
     if isinstance(extracts, (list, tuple)):
         extracts = {item: item for item in extracts}
     return extracts
