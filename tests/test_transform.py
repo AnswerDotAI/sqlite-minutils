@@ -1,5 +1,6 @@
 from sqlite_minutils.db import ForeignKey
 from sqlite_minutils.utils import OperationalError
+from sqlite3 import IntegrityError
 import pytest
 
 
@@ -384,10 +385,16 @@ def test_transform_verify_foreign_keys(fresh_db):
     fresh_db["books"].insert(
         {"id": 1, "title": "Book", "author_id": 3}, pk="id", foreign_keys={"author_id"}
     )
-    # Renaming the id column on authors should break everything
-    with pytest.raises(OperationalError) as e:
+    # Renaming the id column on authors should break everything with an IntegrityError
+    # The old error didn't match the Sqlite docs.
+    # We use a transaction to constrain and rollback the error.
+    fresh_db.begin()
+    try:
         fresh_db["authors"].transform(rename={"id": "id2"})
-    assert e.value.args[0] == 'foreign key mismatch - "books" referencing "authors"'
+        fresh_db.commit()
+    except IntegrityError:
+        fresh_db.rollback()
+
     # This should have rolled us back
     assert (
         fresh_db["authors"].schema

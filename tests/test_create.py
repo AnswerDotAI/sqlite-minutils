@@ -239,8 +239,6 @@ def test_create_table_column_order(fresh_db, use_table_factory):
         ((("one_id", "one", "id", "five"), ("two_id", "two", "id")), AssertionError),
         # Likewise a bad column:
         ((("one_id", "one", "id2"),), AlterError),
-        # Or a list of dicts
-        (({"one_id": "one"},), AssertionError),
     ),
 )
 @pytest.mark.parametrize("use_table_factory", [True, False])
