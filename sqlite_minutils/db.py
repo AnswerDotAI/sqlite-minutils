@@ -2876,7 +2876,7 @@ class Table(Queryable):
         num_records_processed,
         replace,
         ignore,
-    ):
+    ) -> List[Dict]:
         queries_and_params = self.build_insert_queries_and_params(
             extracts,
             chunk,
@@ -2909,7 +2909,7 @@ class Table(Queryable):
                     first_half = chunk[: len(chunk) // 2]
                     second_half = chunk[len(chunk) // 2 :]
 
-                    self.insert_chunk(
+                    records.extend(self.insert_chunk(
                         alter,
                         extracts,
                         first_half,
@@ -2923,9 +2923,9 @@ class Table(Queryable):
                         num_records_processed,
                         replace,
                         ignore,
-                    )
+                    ))
 
-                    self.insert_chunk(
+                    records.extend(self.insert_chunk(
                         alter,
                         extracts,
                         second_half,
@@ -2939,7 +2939,7 @@ class Table(Queryable):
                         num_records_processed,
                         replace,
                         ignore,
-                    )
+                    ))
 
                 else:
                     raise
@@ -2963,7 +2963,7 @@ class Table(Queryable):
                             self.last_pk = row[pk]
                         else:
                             self.last_pk = tuple(row[p] for p in pk)
-        return
+        return records
 
     def insert(
         self,
@@ -2982,7 +2982,7 @@ class Table(Queryable):
         conversions: Optional[Union[Dict[str, str], Default]] = DEFAULT,
         columns: Optional[Union[Dict[str, Any], Default]] = DEFAULT,
         strict: Optional[Union[bool, Default]] = DEFAULT,
-    ) -> "Table":
+    ) -> Dict:
         """
         Insert a single record into the table. The table will be created with a schema that matches
         the inserted record if it does not already exist, see :ref:`python_api_creating_tables`.
@@ -3055,7 +3055,7 @@ class Table(Queryable):
         upsert=False,
         analyze=False,
         strict=DEFAULT,
-    ) -> "Table":
+    ) -> List[Dict]:
         """
         Like ``.insert()`` but takes a list of records and ensures that the table
         that it creates (if table does not exist) has columns for ALL of that data.
@@ -3114,6 +3114,7 @@ class Table(Queryable):
         self.last_pk = None
         if truncate and self.exists():
             self.db.execute("DELETE FROM [{}];".format(self.name))
+        rows = []
         for chunk in chunks(itertools.chain([first_record], records), batch_size):
             chunk = list(chunk)
             num_records_processed += len(chunk)
@@ -3148,7 +3149,7 @@ class Table(Queryable):
 
             first = False
 
-            self.insert_chunk(
+            rows.extend(self.insert_chunk(
                 alter,
                 extracts,
                 chunk,
@@ -3162,12 +3163,12 @@ class Table(Queryable):
                 num_records_processed,
                 replace,
                 ignore,
-            )
+            ))
 
         if analyze:
             self.analyze()
 
-        return self
+        return rows
 
     def upsert(
         self,

@@ -165,9 +165,9 @@ def test_create_table_from_example(fresh_db, example, expected_columns):
 
 def test_create_table_from_example_with_compound_primary_keys(fresh_db):
     record = {"name": "Zhang", "group": "staff", "employee_id": 2}
-    table = fresh_db["people"].insert(record, pk=("group", "employee_id"))
-    assert ["group", "employee_id"] == table.pks
-    assert record == table.get(("staff", 2))
+    records = fresh_db["people"].insert(record, pk=("group", "employee_id"))
+    assert ["group", "employee_id"] == fresh_db["people"].pks
+    assert record == fresh_db["people"].get(("staff", 2))
 
 
 @pytest.mark.parametrize(
@@ -930,13 +930,13 @@ def test_insert_ignore(fresh_db):
 
 def test_insert_hash_id(fresh_db):
     dogs = fresh_db["dogs"]
-    id = dogs.insert({"name": "Cleo", "twitter": "cleopaws"}, hash_id="id").last_pk
+    id = dogs.insert({"name": "Cleo", "twitter": "cleopaws"}, hash_id="id")[0]['id']
     assert "f501265970505d9825d8d9f590bfab3519fb20b1" == id
     assert dogs.count == 1
     # Insert replacing a second time should not create a new row
     id2 = dogs.insert(
         {"name": "Cleo", "twitter": "cleopaws"}, hash_id="id", replace=True
-    ).last_pk
+    )[0]['id']
     assert "f501265970505d9825d8d9f590bfab3519fb20b1" == id2
     assert dogs.count == 1
 
@@ -950,19 +950,21 @@ def test_insert_hash_id_columns(fresh_db, use_table_factory):
         dogs = fresh_db["dogs"]
         insert_kwargs = dict(hash_id_columns=("name", "twitter"))
 
-    id = dogs.insert(
+    dogs.insert(
         {"name": "Cleo", "twitter": "cleopaws", "age": 5},
         **insert_kwargs,
-    ).last_pk
+    )
+    id = dogs.last_pk
     expected_hash = hash_record({"name": "Cleo", "twitter": "cleopaws"})
     assert id == expected_hash
     assert dogs.count == 1
     # Insert replacing a second time should not create a new row
-    id2 = dogs.insert(
+    dogs.insert(
         {"name": "Cleo", "twitter": "cleopaws", "age": 6},
         **insert_kwargs,
         replace=True,
-    ).last_pk
+    )
+    id2 = dogs.last_pk
     assert id2 == expected_hash
     assert dogs.count == 1
 

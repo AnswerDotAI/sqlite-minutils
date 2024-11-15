@@ -58,7 +58,7 @@ def test_update_compound_pk_table(fresh_db):
 )
 def test_update_invalid_pk(fresh_db, pk, update_pk):
     table = fresh_db["table"]
-    table.insert({"id1": 5, "id2": 3, "v": 1}, pk=pk).last_pk
+    table.insert({"id1": 5, "id2": 3, "v": 1}, pk=pk)
     with pytest.raises(NotFoundError):
         table.update(update_pk, {"v": 2})
 
@@ -87,7 +87,8 @@ def test_update_alter(fresh_db):
 
 def test_update_alter_with_invalid_column_characters(fresh_db):
     table = fresh_db["table"]
-    rowid = table.insert({"foo": "bar"}).last_pk
+    table.insert({"foo": "bar"})
+    rowid = table.last_pk
     with pytest.raises(AssertionError):
         table.update(rowid, {"new_col[abc]": 1.2}, alter=True)
 
