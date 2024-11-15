@@ -7,6 +7,7 @@ def test_duplicate(fresh_db):
     # Create table using native Sqlite statement:
     fresh_db.execute(
         """CREATE TABLE [table1] (
+    [id] INT,
     [text_col] TEXT,
     [real_col] REAL,
     [int_col] INTEGER,
@@ -16,6 +17,7 @@ def test_duplicate(fresh_db):
     # Insert one row of mock data:
     dt = datetime.datetime.now()
     data = {
+        'id': 1,
         "text_col": "Cleo",
         "real_col": 3.14,
         "int_col": -255,
@@ -23,13 +25,14 @@ def test_duplicate(fresh_db):
         "datetime_col": str(dt),
     }
     table1 = fresh_db["table1"]
-    row_id = table1.insert(data).last_rowid
+    row_id = table1.insert(data)[0]['id']
     # Duplicate table:
     table2 = table1.duplicate("table2")
     # Ensure data integrity:
     assert data == table2.get(row_id)
     # Ensure schema integrity:
     assert [
+        {"name": "id", "type": "INT"},
         {"name": "text_col", "type": "TEXT"},
         {"name": "real_col", "type": "REAL"},
         {"name": "int_col", "type": "INT"},

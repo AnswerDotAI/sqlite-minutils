@@ -1060,7 +1060,7 @@ def test_cannot_provide_both_filename_and_memory():
 
 
 def test_creates_id_column(fresh_db):
-    last_pk = fresh_db.table("cats", pk="id").insert({"name": "barry"}).last_pk
+    last_pk = fresh_db.table("cats", pk="id").insert({"name": "barry"})[0]['id']
     assert [{"name": "barry", "id": last_pk}] == list(fresh_db["cats"].rows)
 
 

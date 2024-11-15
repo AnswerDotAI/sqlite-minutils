@@ -22,15 +22,15 @@ def test_update_no_change(fresh_db):
 def test_update_rowid_table(fresh_db):
     "Test updating a row that just got inserted, using the inserted row's last_pk as rowid"
     table = fresh_db["table"]
-    rowid = table.insert({"foo": "bar"}).last_pk
+    rowid = table.insert({"foo": "bar", 'id': 1})[0]['id']
     table.update(rowid, {"foo": "baz"})
-    assert [{"foo": "baz"}] == list(table.rows)
+    assert [{"foo": "baz", 'id': 1}] == list(table.rows)
 
 
 def test_update_pk_table(fresh_db):
     "Like test_update_rowid_table, but with a user-specified primary key"
     table = fresh_db["table"]
-    pk = table.insert({"foo": "bar", "id": 5}, pk="id").last_pk
+    pk = table.insert({"foo": "bar", "id": 5}, pk="id")[0]['id']
     assert 5 == pk
     table.update(pk, {"foo": "baz"})
     assert [{"id": 5, "foo": "baz"}] == list(table.rows)
@@ -38,7 +38,8 @@ def test_update_pk_table(fresh_db):
 
 def test_update_compound_pk_table(fresh_db):
     table = fresh_db["table"]
-    pk = table.insert({"id1": 5, "id2": 3, "v": 1}, pk=("id1", "id2")).last_pk
+    record = table.insert({"id1": 5, "id2": 3, "v": 1}, pk=("id1", "id2"))[0]
+    pk = (record['id1'], record['id2'])
     assert (5, 3) == pk
     table.update(pk, {"v": 2})
     assert [{"id1": 5, "id2": 3, "v": 2}] == list(table.rows)
@@ -65,9 +66,9 @@ def test_update_invalid_pk(fresh_db, pk, update_pk):
 
 def test_update_alter(fresh_db):
     table = fresh_db["table"]
-    rowid = table.insert({"foo": "bar"}).last_pk
+    rowid = table.insert({"foo": "bar", 'id': 1})[0]['id']
     table.update(rowid, {"new_col": 1.2}, alter=True)
-    assert [{"foo": "bar", "new_col": 1.2}] == list(table.rows)
+    assert [{"foo": "bar", "new_col": 1.2, 'id': 1}] == list(table.rows)
     # Let's try adding three cols at once
     table.update(
         rowid,
@@ -81,6 +82,7 @@ def test_update_alter(fresh_db):
             "str_col": "str",
             "bytes_col": b"\xa0 has bytes",
             "int_col": -10,
+            'id': 1
         }
     ] == list(table.rows)
 
