@@ -3324,9 +3324,9 @@ class Table(Queryable):
                     conversions=conversions,
                     columns=columns,
                     strict=strict,
-                ).last_pk
-        else:
-            pk = self.insert(
+                )[0][pk]
+        else:         
+            id = self.insert(
                 combined_values,
                 pk=pk,
                 foreign_keys=foreign_keys,
@@ -3337,9 +3337,9 @@ class Table(Queryable):
                 conversions=conversions,
                 columns=columns,
                 strict=strict,
-            ).last_pk
+            )[0][pk]
             self.create_index(lookup_values.keys(), unique=True)
-            return pk
+            return id
 
     def m2m(
         self,
