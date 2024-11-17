@@ -955,6 +955,8 @@ class Database:
             columns_to_drop = [
                 column for column in existing_columns if column not in columns
             ]
+            if columns_to_drop:
+                for col_name in columns_to_drop: table.drop_column(col_name)
             if missing_columns:
                 for col_name, col_type in missing_columns.items():
                     table.add_column(col_name, col_type)
@@ -987,7 +989,6 @@ class Database:
             if should_transform:
                 table.transform(
                     types=columns,
-                    drop=columns_to_drop,
                     column_order=column_order,
                     not_null=not_null,
                     defaults=defaults,
@@ -2122,6 +2123,22 @@ class Table(Queryable):
                     raise e
         if analyze:
             self.db.analyze(created_index_name)
+        return self
+
+    def drop_column(
+        self,
+        col_name: str
+    ):
+        """
+        Drop a column from this table.
+
+        :param col_name: Name of the new column
+        """
+        sql = "ALTER TABLE [{table}] DROP COLUMN [{col_name}];".format(
+            table=self.name,
+            col_name=col_name,
+        )
+        self.db.execute(sql)
         return self
 
     def add_column(
