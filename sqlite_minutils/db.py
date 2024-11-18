@@ -6,7 +6,7 @@ import binascii
 from collections import namedtuple
 from collections.abc import Mapping
 import contextlib, datetime, decimal, inspect, itertools, json, os, pathlib, re, secrets, textwrap
-from typing import ( cast, Any, Callable, Dict, Generator, Iterable, Union, Optional, List, Tuple,)
+from typing import ( cast, Any, Callable, Dict, Generator, Iterable, Union, Optional, List, Tuple,Iterator)
 from functools import cache
 import uuid
 
@@ -1435,6 +1435,28 @@ class Table(Queryable):
                 else " ({})".format(", ".join(c.name for c in self.columns))
             ),
         )
+
+    # Add machinery to make the Table class an iterator of query results
+    # This allows us to preserve the historical design of the Table class
+    # in sqlite-minutils while also introducting use of RETURNING *.
+    _rows: List[Dict] = None
+
+    def __iter__(self) -> Iterator[Dict[str, Any]]:
+        return iter(self._rows)
+
+    def __len__(self) -> int:
+        return len(self._rows)
+
+    def __getitem__(self, idx: int) -> Dict:
+        """
+        ``table[idx]`` returns a :Dict: object based off the index.
+        If the record isn't found it will return an index error
+
+        :param idx: The index of the row to get
+        """
+        return self._rows[idx]
+
+    # Utility properties
 
     @property
     def count(self) -> int:
@@ -2982,7 +3004,7 @@ class Table(Queryable):
         conversions: Optional[Union[Dict[str, str], Default]] = DEFAULT,
         columns: Optional[Union[Dict[str, Any], Default]] = DEFAULT,
         strict: Optional[Union[bool, Default]] = DEFAULT,
-    ) -> Dict:
+    ) -> "Table":
         """
         Insert a single record into the table. The table will be created with a schema that matches
         the inserted record if it does not already exist, see :ref:`python_api_creating_tables`.
@@ -3055,7 +3077,7 @@ class Table(Queryable):
         upsert=False,
         analyze=False,
         strict=DEFAULT,
-    ) -> List[Dict]:
+    ) -> "Table":
         """
         Like ``.insert()`` but takes a list of records and ensures that the table
         that it creates (if table does not exist) has columns for ALL of that data.
@@ -3168,7 +3190,8 @@ class Table(Queryable):
         if analyze:
             self.analyze()
 
-        return rows
+        self._rows = rows
+        return self
 
     def upsert(
         self,
@@ -3408,9 +3431,10 @@ class Table(Queryable):
                 records = cast(List, record_or_iterable)
             # Ensure each record exists in other table
             for record in records:
-                id = other_table.insert(
+                other_table.insert(
                     cast(dict, record), pk=pk, replace=True, alter=alter
-                ).last_pk
+                )
+                id = self.last_pk
                 m2m_table_obj.insert(
                     {
                         "{}_id".format(other_table.name): id,
