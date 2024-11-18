@@ -3437,10 +3437,9 @@ class Table(Queryable):
                 records = cast(List, record_or_iterable)
             # Ensure each record exists in other table
             for record in records:
-                other_table.insert(
+                id = other_table.insert(
                     cast(dict, record), pk=pk, replace=True, alter=alter
-                )
-                id = self.last_pk
+                ).last_pk
                 m2m_table_obj.insert(
                     {
                         "{}_id".format(other_table.name): id,
