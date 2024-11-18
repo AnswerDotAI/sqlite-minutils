@@ -1358,6 +1358,12 @@ class Queryable:
 
 class Table(Queryable):
     """
+    A Table class instance represents a sqlite3 table that may or may not exist
+    in the database. The Table class instance may or may not represent some of
+    the rows of the database table. After some mutations (INSERT/UPDATE/UPSERT)
+    the changed records the Table class instance can be iterated over, returning
+    during each iteration providing a `dict` representation of the current record. 
+
     Tables should usually be initialized using the ``db.table(table_name)`` or
     ``db[table_name]`` methods.
 
@@ -1439,7 +1445,7 @@ class Table(Queryable):
     # Add machinery to make the Table class an iterator of query results
     # This allows us to preserve the historical design of the Table class
     # in sqlite-minutils while also introducting use of RETURNING *.
-    _rows: List[Dict] = None
+    _rows: List[Dict] = []
 
     def __iter__(self) -> Iterator[Dict[str, Any]]:
         return iter(self._rows)
