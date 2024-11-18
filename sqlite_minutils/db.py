@@ -1445,13 +1445,13 @@ class Table(Queryable):
     # Add machinery to make the Table class an iterator of query results
     # This allows us to preserve the historical design of the Table class
     # in sqlite-minutils while also introducting use of RETURNING *.
-    _rows: List[Dict] = []
+    _last_results: List[Dict] = []
 
     def __iter__(self) -> Iterator[Dict[str, Any]]:
-        return iter(self._rows)
+        return iter(self._last_results)
 
     def __len__(self) -> int:
-        return len(self._rows)
+        return len(self._last_results)
 
     def __getitem__(self, idx: int) -> Dict:
         """
@@ -1460,7 +1460,7 @@ class Table(Queryable):
 
         :param idx: The index of the row to get
         """
-        return self._rows[idx]
+        return self._last_results[idx]
 
     # Utility properties
 
@@ -3196,7 +3196,7 @@ class Table(Queryable):
         if analyze:
             self.analyze()
 
-        self._rows = rows
+        self._last_results = rows
         return self
 
     def upsert(
