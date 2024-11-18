@@ -6,6 +6,9 @@ def test_upsert(fresh_db):
     table = fresh_db["table"]
     table.insert({"id": 1, "name": "Cleo"}, pk="id")
     table.upsert({"id": 1, "age": 5}, pk="id", alter=True)
+    # Check the returned value, which is now the table instance iterator
+    assert list(table) == [{"id": 1, "name": "Cleo", "age": 5}]
+    # Check the database itself
     assert list(table.rows) == [{"id": 1, "name": "Cleo", "age": 5}]
     assert table.last_pk == 1
 
@@ -14,6 +17,12 @@ def test_upsert_all(fresh_db):
     table = fresh_db["table"]
     table.upsert_all([{"id": 1, "name": "Cleo"}, {"id": 2, "name": "Nixie"}], pk="id")
     table.upsert_all([{"id": 1, "age": 5}, {"id": 2, "age": 5}], pk="id", alter=True)
+    # Check the returned value, which is now the table instance iterator
+    assert list(table) == [
+        {"id": 1, "name": "Cleo", "age": 5},
+        {"id": 2, "name": "Nixie", "age": 5},
+    ]
+    # Check the database itself
     assert list(table.rows) == [
         {"id": 1, "name": "Cleo", "age": 5},
         {"id": 2, "name": "Nixie", "age": 5},
@@ -23,7 +32,10 @@ def test_upsert_all(fresh_db):
 
 def test_upsert_all_single_column(fresh_db):
     table = fresh_db["table"]
-    table.upsert_all([{"name": "Cleo"}], pk="name")
+    result = table.upsert_all([{"name": "Cleo"}], pk="name")
+    # Check the returned value, which is now the table instance iterator
+    assert list(table) == [{"name": "Cleo"}]
+    # Check the database itself
     assert list(table.rows) == [{"name": "Cleo"}]
     assert table.pks == ["name"]
 
@@ -51,6 +63,9 @@ def test_upsert_with_hash_id(fresh_db):
     table.upsert({"foo": "bar"}, hash_id="pk")
     assert [{"pk": "a5e744d0164540d33b1d7ea616c28f2fa97e754a", "foo": "bar"}] == list(
         table.rows
+    )    
+    assert [{"pk": "a5e744d0164540d33b1d7ea616c28f2fa97e754a", "foo": "bar"}] == list(
+        table
     )
     assert "a5e744d0164540d33b1d7ea616c28f2fa97e754a" == table.last_pk
 

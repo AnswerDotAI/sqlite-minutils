@@ -2894,7 +2894,6 @@ class Table(Queryable):
             )
             flat_values = list(itertools.chain(*values))
             queries_and_params = [(sql, flat_values)]
-
         return queries_and_params
 
     def insert_chunk(
@@ -2940,7 +2939,11 @@ class Table(Queryable):
                 if alter and (" column" in e.args[0]):
                     # Attempt to add any missing columns, then try again
                     self.add_missing_columns(chunk)
-                    result = self.db.execute(query, params)
+                    cursor = self.db.execute(query, params)
+                    if cursor.description is None: continue
+                    columns = [d[0] for d in cursor.description]
+                    for row in cursor:
+                        records.append(dict(zip(columns, row)))
                 elif e.args[0] == "too many SQL variables":
                     first_half = chunk[: len(chunk) // 2]
                     second_half = chunk[len(chunk) // 2 :]
@@ -3204,7 +3207,14 @@ class Table(Queryable):
         if analyze:
             self.analyze()
 
-        self._last_results = rows
+        def dedup_by_keys(lst, keys):
+            """Deletes duplicates by pks, does so in reverse order as UPSERTs does things in order"""
+            seen = set()
+            res = [d for d in reversed(lst) if not (tuple(d.get(k) for k in keys) in seen or seen.add(tuple(d.get(k) for k in keys)))]
+            return list(reversed(res))
+
+        # Remove duplicates from rows and save to self._last_results
+        self._last_results = dedup_by_keys(rows, self.pks)
         return self
 
     def upsert(
