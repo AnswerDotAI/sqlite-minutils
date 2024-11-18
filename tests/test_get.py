@@ -5,14 +5,14 @@ from sqlite_minutils.db import NotFoundError
 def test_get_rowid(fresh_db):
     dogs = fresh_db["dogs"]
     cleo = {"name": "Cleo", "age": 4}
-    dogs.insert(cleo)
-    assert cleo == dogs.get(dogs.last_rowid)
+    row_id = dogs.insert(cleo).last_rowid
+    assert cleo == dogs.get(row_id)
 
 
 def test_get_primary_key(fresh_db):
     dogs = fresh_db["dogs"]
     cleo = {"name": "Cleo", "age": 4, "id": 5}
-    last_pk = dogs.insert(cleo, pk="id")[0]['id']
+    last_pk = dogs.insert(cleo, pk="id").last_pk
     assert 5 == last_pk
     assert cleo == dogs.get(5)
 

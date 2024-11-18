@@ -1,7 +1,7 @@
 def test_delete_rowid_table(fresh_db):
     table = fresh_db["table"]
     table.insert({"foo": 1, 'id': 1})
-    rowid = table.insert({"foo": 2, 'id': 2})[0]['id']
+    rowid = table.insert({"foo": 2, 'id': 2}).last_pk
     table.delete(rowid)
     assert [{"foo": 1, 'id': 1}] == list(table.rows)
 

@@ -44,7 +44,7 @@ def test_lookup_new_table_compound_key(fresh_db):
 
 def test_lookup_adds_unique_constraint_to_existing_table(fresh_db):
     species = fresh_db.table("species", pk="id")
-    palm_id = species.insert({"name": "Palm"})[0]['id']
+    palm_id = species.insert({"name": "Palm"}).last_pk
     species.insert({"name": "Oak"})
     assert [] == species.indexes
     assert palm_id == species.lookup({"name": "Palm"})

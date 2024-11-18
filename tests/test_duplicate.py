@@ -25,7 +25,7 @@ def test_duplicate(fresh_db):
         "datetime_col": str(dt),
     }
     table1 = fresh_db["table1"]
-    row_id = table1.insert(data)[0]['id']
+    row_id = table1.insert(data).last_pk
     # Duplicate table:
     table2 = table1.duplicate("table2")
     # Ensure data integrity:
