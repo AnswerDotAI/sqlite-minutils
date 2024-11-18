@@ -47,6 +47,9 @@ def test_upsert_all_not_null(fresh_db):
         pk="id",
         not_null=["name"],
     )
+    # Check the returned value, which is now the table instance iterator
+    assert list(fresh_db["comments"]) == [{"id": 1, "name": "Cleo"}]
+    # Check the database itself
     assert list(fresh_db["comments"].rows) == [{"id": 1, "name": "Cleo"}]
 
 
@@ -61,11 +64,13 @@ def test_upsert_error_if_no_pk(fresh_db):
 def test_upsert_with_hash_id(fresh_db):
     table = fresh_db["table"]
     table.upsert({"foo": "bar"}, hash_id="pk")
-    assert [{"pk": "a5e744d0164540d33b1d7ea616c28f2fa97e754a", "foo": "bar"}] == list(
-        table.rows
-    )    
+    # Check the returned value, which is now the table instance iterator
     assert [{"pk": "a5e744d0164540d33b1d7ea616c28f2fa97e754a", "foo": "bar"}] == list(
         table
+    )
+    # Check the database itself
+    assert [{"pk": "a5e744d0164540d33b1d7ea616c28f2fa97e754a", "foo": "bar"}] == list(
+        table.rows
     )
     assert "a5e744d0164540d33b1d7ea616c28f2fa97e754a" == table.last_pk
 
@@ -74,6 +79,16 @@ def test_upsert_with_hash_id(fresh_db):
 def test_upsert_with_hash_id_columns(fresh_db, hash_id):
     table = fresh_db["table"]
     table.upsert({"a": 1, "b": 2, "c": 3}, hash_id=hash_id, hash_id_columns=("a", "b"))
+    # Check the returned value, which is now the table instance iterator
+    assert list(table) == [
+        {
+            hash_id or "id": "4acc71e0547112eb432f0a36fb1924c4a738cb49",
+            "a": 1,
+            "b": 2,
+            "c": 3,
+        }
+    ]    
+    # Check the database itself  
     assert list(table.rows) == [
         {
             hash_id or "id": "4acc71e0547112eb432f0a36fb1924c4a738cb49",
@@ -84,6 +99,16 @@ def test_upsert_with_hash_id_columns(fresh_db, hash_id):
     ]
     assert table.last_pk == "4acc71e0547112eb432f0a36fb1924c4a738cb49"
     table.upsert({"a": 1, "b": 2, "c": 4}, hash_id=hash_id, hash_id_columns=("a", "b"))
+    # Check the returned value, which is now the table instance iterator
+    assert list(table) == [
+        {
+            hash_id or "id": "4acc71e0547112eb432f0a36fb1924c4a738cb49",
+            "a": 1,
+            "b": 2,
+            "c": 4,
+        }
+    ]
+    # Check the database itself
     assert list(table.rows) == [
         {
             hash_id or "id": "4acc71e0547112eb432f0a36fb1924c4a738cb49",
@@ -106,6 +131,12 @@ def test_upsert_compound_primary_key(fresh_db):
     assert table.last_pk is None
     table.upsert({"species": "dog", "id": 1, "age": 5}, pk=("species", "id"))
     assert ("dog", 1) == table.last_pk
+    # Check the returned value, which is now the table instance iterator
+    # Only one record was changed, so we don't look at all the rows
+    assert [
+        {"species": "dog", "id": 1, "name": "Cleo", "age": 5},
+    ] == list(table)    
+    # Check the database itself, the `.row` propery returns all rows
     assert [
         {"species": "dog", "id": 1, "name": "Cleo", "age": 5},
         {"species": "cat", "id": 1, "name": "Catbag", "age": None},
