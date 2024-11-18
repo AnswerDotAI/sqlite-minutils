@@ -13,7 +13,7 @@ def test_update_no_change(fresh_db):
     table = fresh_db["table"]
     table.insert({"foo": "bar"})
     table.update(1, {"foo": "bar"})
-    assert [{"foo": "bar"}] == list(table.rows)
+    assert [{"foo": "bar"}] == list(table.update(1, {"foo": "bar"}))
     table.update(1, {})
     assert [{"foo": "bar"}] == list(table.rows)
 
@@ -23,7 +23,9 @@ def test_update_rowid_table(fresh_db):
     "Test updating a row that just got inserted, using the inserted row's last_pk as rowid"
     table = fresh_db["table"]
     rowid = table.insert({"foo": "bar", 'id': 1}).last_pk
-    table.update(rowid, {"foo": "baz"})
+    # Test that the Table.update method returns the correct value
+    assert [{"foo": "baz", 'id': 1}] == list(table.update(rowid, {"foo": "baz"}))
+    # Test that the Table.rows property, which calls the DB, returns the correct value
     assert [{"foo": "baz", 'id': 1}] == list(table.rows)
 
 
@@ -32,7 +34,7 @@ def test_update_pk_table(fresh_db):
     table = fresh_db["table"]
     pk = table.insert({"foo": "bar", "id": 5}, pk="id").last_pk
     assert 5 == pk
-    table.update(pk, {"foo": "baz"})
+    assert [{"id": 5, "foo": "baz"}] == list(table.update(pk, {"foo": "baz"}))
     assert [{"id": 5, "foo": "baz"}] == list(table.rows)
 
 
@@ -41,7 +43,7 @@ def test_update_compound_pk_table(fresh_db):
     record = table.insert({"id1": 5, "id2": 3, "v": 1}, pk=("id1", "id2"))[0]
     pk = (record['id1'], record['id2'])
     assert (5, 3) == pk
-    table.update(pk, {"v": 2})
+    assert [{"id1": 5, "id2": 3, "v": 2}] == list(table.update(pk, {"v": 2}))
     assert [{"id1": 5, "id2": 3, "v": 2}] == list(table.rows)
 
 

@@ -2758,8 +2758,15 @@ class Table(Queryable):
         sql = "update [{table}] set {sets} where {wheres}".format(
             table=self.name, sets=", ".join(sets), wheres=" and ".join(wheres)
         )
+        sql += ' RETURNING *'
+        records = []
         try:
-            rowcount = self.db.execute(sql, args).rowcount
+            cursor = self.db.execute(sql, args)
+            rowcount = cursor.rowcount
+            if cursor.description is not None:
+                columns = [d[0] for d in cursor.description]
+                for row in cursor:
+                    records.append(dict(zip(columns, row)))            
         except OperationalError as e:
             if alter and (" column" in e.args[0]):
                 # Attempt to add any missing columns, then try again
@@ -2771,6 +2778,7 @@ class Table(Queryable):
         # TODO: Test this works (rolls back) - use better exception:
         # assert rowcount == 1
         self.last_pk = pk_values[0] if len(pks) == 1 else pk_values
+        self._last_results = records
         return self
 
     def build_insert_queries_and_params(
