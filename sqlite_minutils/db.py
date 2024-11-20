@@ -1392,6 +1392,9 @@ class Table(Queryable):
     last_rowid: Optional[int] = None
     #: The primary key of the last inserted, updated or selected row.
     last_pk: Optional[Any] = None
+    # This allows us to preserve the historical design of the Table class
+    # in sqlite-minutils while also introducting use of RETURNING *.
+    result: List[Dict] = []    
 
     def __init__(
         self,
@@ -1441,28 +1444,6 @@ class Table(Queryable):
                 else " ({})".format(", ".join(c.name for c in self.columns))
             ),
         )
-
-    # Add machinery to make the Table class an iterator of query results
-    # This allows us to preserve the historical design of the Table class
-    # in sqlite-minutils while also introducting use of RETURNING *.
-    _last_results: List[Dict] = []
-
-    def __iter__(self) -> Iterator[Dict[str, Any]]:
-        return iter(self._last_results)
-
-    def __len__(self) -> int:
-        return len(self._last_results)
-
-    def __getitem__(self, idx: int) -> Dict:
-        """
-        ``table[idx]`` returns a :Dict: object based off the index.
-        If the record isn't found it will return an index error
-
-        :param idx: The index of the row to get
-        """
-        return self._last_results[idx]
-
-    # Utility properties
 
     @property
     def count(self) -> int:
@@ -2778,7 +2759,7 @@ class Table(Queryable):
         # TODO: Test this works (rolls back) - use better exception:
         # assert rowcount == 1
         self.last_pk = pk_values[0] if len(pks) == 1 else pk_values
-        self._last_results = records
+        self.result = records
         return self
 
     def build_insert_queries_and_params(
@@ -3213,8 +3194,8 @@ class Table(Queryable):
             res = [d for d in reversed(lst) if not (tuple(d.get(k) for k in keys) in seen or seen.add(tuple(d.get(k) for k in keys)))]
             return list(reversed(res))
 
-        # Remove duplicates from rows and save to self._last_results
-        self._last_results = dedup_by_keys(rows, self.pks)
+        # Remove duplicates from rows and save to self.result
+        self.result = dedup_by_keys(rows, self.pks)
         return self
 
     def upsert(
