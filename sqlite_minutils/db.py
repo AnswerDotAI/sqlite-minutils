@@ -9,6 +9,7 @@ import contextlib, datetime, decimal, inspect, itertools, json, os, pathlib, re,
 from typing import ( cast, Any, Callable, Dict, Generator, Iterable, Union, Optional, List, Tuple,Iterator)
 from functools import cache
 import uuid
+import apsw.ext
 
 try: from sqlite_dump import iterdump
 except ImportError: iterdump = None
@@ -238,14 +239,11 @@ class Database:
         ), "Either specify a filename_or_conn or pass memory=True"
         if memory_name:
             uri = "file:{}?mode=memory&cache=shared".format(memory_name)
-            self.conn = sqlite3.connect(
-                uri,
-                uri=True,
-                check_same_thread=False,
-                isolation_level=None
+            self.conn = sqlite3.Connection(
+                uri
             )
         elif memory or filename_or_conn == ":memory:":
-            self.conn = sqlite3.connect(":memory:", isolation_level=None)
+            self.conn = sqlite3.Connection(":memory:")
         elif isinstance(filename_or_conn, (str, pathlib.Path)):
             if recreate and os.path.exists(filename_or_conn):
                 try:
@@ -253,9 +251,9 @@ class Database:
                 except OSError:
                     # Avoid mypy and __repr__ errors, see:
                     # https://github.com/simonw/sqlite-utils/issues/503
-                    self.conn = sqlite3.connect(":memory:", isolation_level=None)
+                    self.conn = sqlite3.Connection(":memory:")
                     raise
-            self.conn = sqlite3.connect(str(filename_or_conn), check_same_thread=False, isolation_level=None)
+            self.conn = sqlite3.Connection(str(filename_or_conn))
         else:
             assert not recreate, "recreate cannot be used with connections, only paths"
             self.conn = filename_or_conn
@@ -1292,7 +1290,9 @@ class Queryable:
         if offset is not None:
             sql += f" offset {offset}"
         cursor = self.db.execute(sql, where_args or [])
-        columns = [c[0] for c in cursor.description]
+        # If no records found, raise a NotFoundError
+        try: columns = [c[0] for c in cursor.description]
+        except apsw.ExecutionCompleteError: raise NotFoundError
         for row in cursor:
             yield dict(zip(columns, row))
 
