@@ -10,6 +10,9 @@ from typing import ( cast, Any, Callable, Dict, Generator, Iterable, Union, Opti
 from functools import cache
 import uuid
 import apsw.ext
+import apsw.bestpractice
+
+# apsw.bestpractice.apply(apsw.bestpractice.connection_enable_foreign_keys)
 
 try: from sqlite_dump import iterdump
 except ImportError: iterdump = None
@@ -267,6 +270,7 @@ class Database:
         self.use_counts_table = use_counts_table
         self.strict = strict
 
+
     def close(self):
         "Close the SQLite connection, and the underlying database file"
         self.conn.close()
@@ -419,10 +423,10 @@ class Database:
           parameters, or a dictionary for ``where id = :id``
         """
         cursor = self.execute(sql, tuple(params or tuple()))
-        if cursor.description is None: return []
-        keys = [d[0] for d in cursor.description]
+        try: columns = [c[0] for c in cursor.description]
+        except apsw.ExecutionCompleteError: return []
         for row in cursor:
-            yield dict(zip(keys, row))
+            yield dict(zip(columns, row))
 
     def execute(
         self, sql: str, parameters: Optional[Union[Iterable, dict]] = None
@@ -2211,7 +2215,7 @@ class Table(Queryable):
         """
         try:
             self.db.execute("DROP TABLE [{}]".format(self.name))
-        except sqlite3.OperationalError:
+        except apsw.SQLError:
             if not ignore:
                 raise
 
@@ -2929,7 +2933,8 @@ class Table(Queryable):
         for query, params in queries_and_params:
             try:
                 cursor = self.db.execute(query, tuple(params))
-                if cursor.description is None: continue
+                try: columns = [c[0] for c in cursor.description]
+                except apsw.ExecutionCompleteError: continue
                 columns = [d[0] for d in cursor.description]
                 for row in cursor:
                     records.append(dict(zip(columns, row)))
@@ -3671,7 +3676,7 @@ class View(Queryable):
 
         try:
             self.db.execute("DROP VIEW [{}]".format(self.name))
-        except sqlite3.OperationalError:
+        except apsw.SQLError:
             if not ignore:
                 raise
 
