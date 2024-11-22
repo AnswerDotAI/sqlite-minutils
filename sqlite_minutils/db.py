@@ -281,25 +281,6 @@ class Database:
         return int(res[0])
 
     @contextlib.contextmanager
-    def ensure_autocommit_off(self):
-        """
-        Ensure autocommit is off for this database connection.
-
-        Example usage::
-
-            with db.ensure_autocommit_off():
-                # do stuff here
-
-        This will reset to the previous autocommit state at the end of the block.
-        """
-        old_isolation_level = self.conn.isolation_level
-        try:
-            self.conn.isolation_level = None
-            yield
-        finally:
-            self.conn.isolation_level = old_isolation_level
-
-    @contextlib.contextmanager
     def tracer(self, tracer: Optional[Callable] = None):
         """
         Context manager to temporarily set a tracer function - all executed SQL queries will
@@ -645,14 +626,12 @@ class Database:
         Sets ``journal_mode`` to ``'wal'`` to enable Write-Ahead Log mode.
         """
         if self.journal_mode != "wal":
-            with self.ensure_autocommit_off():
-                self.execute("PRAGMA journal_mode=wal;")
+            self.execute("PRAGMA journal_mode=wal;")
 
     def disable_wal(self):
         "Sets ``journal_mode`` back to ``'delete'`` to disable Write-Ahead Log mode."
         if self.journal_mode != "delete":
-            with self.ensure_autocommit_off():
-                self.execute("PRAGMA journal_mode=delete;")
+            self.execute("PRAGMA journal_mode=delete;")
 
     def _ensure_counts_table(self):
         self.execute(_COUNTS_TABLE_CREATE_SQL.format(self._counts_table_name))
@@ -1296,7 +1275,7 @@ class Queryable:
         cursor = self.db.execute(sql, where_args or [])
         # If no records found, raise a NotFoundError
         try: columns = [c[0] for c in cursor.description]
-        except apsw.ExecutionCompleteError: raise NotFoundError
+        except apsw.ExecutionCompleteError: return []
         for row in cursor:
             yield dict(zip(columns, row))
 
