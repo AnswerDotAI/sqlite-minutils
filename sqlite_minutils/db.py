@@ -12,7 +12,7 @@ import uuid
 import apsw.ext
 import apsw.bestpractice
 
-# apsw.bestpractice.apply(apsw.bestpractice.connection_enable_foreign_keys)
+apsw.bestpractice.apply(apsw.bestpractice.recommended)
 
 try: from sqlite_dump import iterdump
 except ImportError: iterdump = None
@@ -269,6 +269,7 @@ class Database:
         self._registered_functions: set = set()
         self.use_counts_table = use_counts_table
         self.strict = strict
+        # self.execute('PRAGMA foreign_keys=on;')
 
 
     def close(self):
@@ -1723,7 +1724,7 @@ class Table(Queryable):
         ]
         try:
             if pragma_foreign_keys_was_on:
-                self.db.execute("PRAGMA foreign_keys=0;")
+                self.db.execute("PRAGMA foreign_keys=off;")
             for sql in sqls:
                 self.db.execute(sql)
             # Run the foreign_key_check before we commit
@@ -1731,7 +1732,7 @@ class Table(Queryable):
                 self.db.execute("PRAGMA foreign_key_check;")
         finally:
             if pragma_foreign_keys_was_on:
-                self.db.execute("PRAGMA foreign_keys=1;")
+                self.db.execute("PRAGMA foreign_keys=on;")
         return self
 
     def transform_sql(
