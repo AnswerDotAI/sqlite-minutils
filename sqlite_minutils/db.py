@@ -2773,12 +2773,10 @@ class Table(Queryable):
             if alter and (" column" in e.args[0]):
                 # Attempt to add any missing columns, then try again
                 self.add_missing_columns([updates])
-                rowcount = self.db.execute(sql, args).rowcount
+                self.db.execute(sql, args)
             else:
                 raise
 
-        # TODO: Test this works (rolls back) - use better exception:
-        # assert rowcount == 1
         self.last_pk = pk_values[0] if len(pks) == 1 else pk_values
         self.result = records
         return self
