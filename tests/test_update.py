@@ -13,7 +13,7 @@ def test_update_no_change(fresh_db):
     table = fresh_db["table"]
     table.insert({"foo": "bar"})
     table.update(1, {"foo": "bar"})
-    assert [{"foo": "bar"}] == list(table.rows)
+    assert [{"foo": "bar"}] == table.update(1, {"foo": "bar"}).result
     table.update(1, {})
     assert [{"foo": "bar"}] == list(table.rows)
 
@@ -22,9 +22,11 @@ def test_update_no_change(fresh_db):
 def test_update_rowid_table(fresh_db):
     "Test updating a row that just got inserted, using the inserted row's last_pk as rowid"
     table = fresh_db["table"]
-    rowid = table.insert({"foo": "bar"}).last_pk
-    table.update(rowid, {"foo": "baz"})
-    assert [{"foo": "baz"}] == list(table.rows)
+    rowid = table.insert({"foo": "bar", 'id': 1}).last_pk
+    # Test that the Table.update method returns the correct value
+    assert [{"foo": "baz", 'id': 1}] == table.update(rowid, {"foo": "baz"}).result
+    # Test that the Table.rows property, which calls the DB, returns the correct value
+    assert [{"foo": "baz", 'id': 1}] == list(table.rows)
 
 
 def test_update_pk_table(fresh_db):
@@ -32,15 +34,16 @@ def test_update_pk_table(fresh_db):
     table = fresh_db["table"]
     pk = table.insert({"foo": "bar", "id": 5}, pk="id").last_pk
     assert 5 == pk
-    table.update(pk, {"foo": "baz"})
+    assert [{"id": 5, "foo": "baz"}] == table.update(pk, {"foo": "baz"}).result
     assert [{"id": 5, "foo": "baz"}] == list(table.rows)
 
 
 def test_update_compound_pk_table(fresh_db):
     table = fresh_db["table"]
-    pk = table.insert({"id1": 5, "id2": 3, "v": 1}, pk=("id1", "id2")).last_pk
+    record = table.insert({"id1": 5, "id2": 3, "v": 1}, pk=("id1", "id2")).result[0]
+    pk = (record['id1'], record['id2'])
     assert (5, 3) == pk
-    table.update(pk, {"v": 2})
+    assert [{"id1": 5, "id2": 3, "v": 2}] == table.update(pk, {"v": 2}).result
     assert [{"id1": 5, "id2": 3, "v": 2}] == list(table.rows)
 
 
@@ -58,16 +61,16 @@ def test_update_compound_pk_table(fresh_db):
 )
 def test_update_invalid_pk(fresh_db, pk, update_pk):
     table = fresh_db["table"]
-    table.insert({"id1": 5, "id2": 3, "v": 1}, pk=pk).last_pk
+    table.insert({"id1": 5, "id2": 3, "v": 1}, pk=pk)
     with pytest.raises(NotFoundError):
         table.update(update_pk, {"v": 2})
 
 
 def test_update_alter(fresh_db):
     table = fresh_db["table"]
-    rowid = table.insert({"foo": "bar"}).last_pk
+    rowid = table.insert({"foo": "bar", 'id': 1}).last_pk
     table.update(rowid, {"new_col": 1.2}, alter=True)
-    assert [{"foo": "bar", "new_col": 1.2}] == list(table.rows)
+    assert [{"foo": "bar", "new_col": 1.2, 'id': 1}] == list(table.rows)
     # Let's try adding three cols at once
     table.update(
         rowid,
@@ -81,6 +84,7 @@ def test_update_alter(fresh_db):
             "str_col": "str",
             "bytes_col": b"\xa0 has bytes",
             "int_col": -10,
+            'id': 1
         }
     ] == list(table.rows)
 

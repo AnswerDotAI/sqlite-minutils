@@ -6,7 +6,7 @@ import binascii
 from collections import namedtuple
 from collections.abc import Mapping
 import contextlib, datetime, decimal, inspect, itertools, json, os, pathlib, re, secrets, textwrap
-from typing import ( cast, Any, Callable, Dict, Generator, Iterable, Union, Optional, List, Tuple,)
+from typing import ( cast, Any, Callable, Dict, Generator, Iterable, Union, Optional, List, Tuple,Iterator)
 from functools import cache
 import uuid
 
@@ -1359,6 +1359,12 @@ class Queryable:
 
 class Table(Queryable):
     """
+    A Table class instance represents a sqlite3 table that may or may not exist
+    in the database. The Table class instance may or may not represent some of
+    the rows of the database table. After some mutations (INSERT/UPDATE/UPSERT)
+    the changed records the Table class instance can be iterated over, returning
+    during each iteration providing a `dict` representation of the current record. 
+
     Tables should usually be initialized using the ``db.table(table_name)`` or
     ``db[table_name]`` methods.
 
@@ -1387,6 +1393,9 @@ class Table(Queryable):
     last_rowid: Optional[int] = None
     #: The primary key of the last inserted, updated or selected row.
     last_pk: Optional[Any] = None
+    # This allows us to preserve the historical design of the Table class
+    # in sqlite-minutils while also introducting use of RETURNING *.
+    result: List[Dict] = []    
 
     def __init__(
         self,
@@ -2747,8 +2756,15 @@ class Table(Queryable):
         sql = "update [{table}] set {sets} where {wheres}".format(
             table=self.name, sets=", ".join(sets), wheres=" and ".join(wheres)
         )
+        sql += ' RETURNING *'
+        records = []
         try:
-            rowcount = self.db.execute(sql, args).rowcount
+            cursor = self.db.execute(sql, args)
+            rowcount = cursor.rowcount
+            if cursor.description is not None:
+                columns = [d[0] for d in cursor.description]
+                for row in cursor:
+                    records.append(dict(zip(columns, row)))            
         except OperationalError as e:
             if alter and (" column" in e.args[0]):
                 # Attempt to add any missing columns, then try again
@@ -2760,6 +2776,7 @@ class Table(Queryable):
         # TODO: Test this works (rolls back) - use better exception:
         # assert rowcount == 1
         self.last_pk = pk_values[0] if len(pks) == 1 else pk_values
+        self.result = records
         return self
 
     def build_insert_queries_and_params(
@@ -2875,7 +2892,6 @@ class Table(Queryable):
             )
             flat_values = list(itertools.chain(*values))
             queries_and_params = [(sql, flat_values)]
-
         return queries_and_params
 
     def insert_chunk(
@@ -2893,7 +2909,7 @@ class Table(Queryable):
         num_records_processed,
         replace,
         ignore,
-    ):
+    ) -> List[Dict]:
         queries_and_params = self.build_insert_queries_and_params(
             extracts,
             chunk,
@@ -2921,12 +2937,16 @@ class Table(Queryable):
                 if alter and (" column" in e.args[0]):
                     # Attempt to add any missing columns, then try again
                     self.add_missing_columns(chunk)
-                    result = self.db.execute(query, params)
+                    cursor = self.db.execute(query, params)
+                    if cursor.description is None: continue
+                    columns = [d[0] for d in cursor.description]
+                    for row in cursor:
+                        records.append(dict(zip(columns, row)))
                 elif e.args[0] == "too many SQL variables":
                     first_half = chunk[: len(chunk) // 2]
                     second_half = chunk[len(chunk) // 2 :]
 
-                    self.insert_chunk(
+                    records.extend(self.insert_chunk(
                         alter,
                         extracts,
                         first_half,
@@ -2940,9 +2960,9 @@ class Table(Queryable):
                         num_records_processed,
                         replace,
                         ignore,
-                    )
+                    ))
 
-                    self.insert_chunk(
+                    records.extend(self.insert_chunk(
                         alter,
                         extracts,
                         second_half,
@@ -2956,7 +2976,7 @@ class Table(Queryable):
                         num_records_processed,
                         replace,
                         ignore,
-                    )
+                    ))
 
                 else:
                     raise
@@ -2980,7 +3000,7 @@ class Table(Queryable):
                             self.last_pk = row[pk]
                         else:
                             self.last_pk = tuple(row[p] for p in pk)
-        return
+        return records
 
     def insert(
         self,
@@ -3131,6 +3151,7 @@ class Table(Queryable):
         self.last_pk = None
         if truncate and self.exists():
             self.db.execute("DELETE FROM [{}];".format(self.name))
+        rows = []
         for chunk in chunks(itertools.chain([first_record], records), batch_size):
             chunk = list(chunk)
             num_records_processed += len(chunk)
@@ -3165,7 +3186,7 @@ class Table(Queryable):
 
             first = False
 
-            self.insert_chunk(
+            rows.extend(self.insert_chunk(
                 alter,
                 extracts,
                 chunk,
@@ -3179,11 +3200,19 @@ class Table(Queryable):
                 num_records_processed,
                 replace,
                 ignore,
-            )
+            ))
 
         if analyze:
             self.analyze()
 
+        def dedup_by_keys(lst, keys):
+            """Deletes duplicates by pks, does so in reverse order as UPSERTs does things in order"""
+            seen = set()
+            res = [d for d in reversed(lst) if not (tuple(d.get(k) for k in keys) in seen or seen.add(tuple(d.get(k) for k in keys)))]
+            return list(reversed(res))
+
+        # Remove duplicates from rows and save to self.result
+        self.result = dedup_by_keys(rows, self.pks)
         return self
 
     def upsert(
