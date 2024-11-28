@@ -15,7 +15,7 @@ def test_roundtrip_integers(integer):
 @given(st.text())
 def test_roundtrip_text(text):
     db = sqlite_minutils.Database(memory=True)
-    row = {id:1, "text": text}
+    row = {'id':1, "text": text}
     db["test"].insert(row)
     assert list(db["test"].rows) == [row]
 
