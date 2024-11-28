@@ -888,7 +888,6 @@ class Database:
                     ),
                 )
             )
-        # raise Exception
         extra_pk = ""
         if single_pk is None and pk and len(pk) > 1:
             extra_pk = ",\n   PRIMARY KEY ({pks})".format(
@@ -3025,7 +3024,9 @@ class Table(Queryable):
                     if len(self.last_pk) == 1:
                         self.last_pk = self.last_pk[0]   
 
-            # Setting last_rowid to preserve API
+            # Setting last_rowid to preserve API so we don't break backwards
+            # compatibility for users.
+            # TODO: Consider turning this into a property that warns upon usage
             self.last_rowid = self.last_pk                    
 
         return records
