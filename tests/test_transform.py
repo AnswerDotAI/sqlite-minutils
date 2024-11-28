@@ -124,7 +124,7 @@ def test_transform_sql_table_with_primary_key(
         (
             {},
             [
-                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER,\n   [name] TEXT,\n   [age] TEXT\n);",
+                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT,\n   [age] TEXT\n);",
                 "INSERT INTO [dogs_new_suffix] ([rowid], [id], [name], [age])\n   SELECT [rowid], [id], [name], [age] FROM [dogs];",
                 "DROP TABLE [dogs];",
                 "ALTER TABLE [dogs_new_suffix] RENAME TO [dogs];",
@@ -134,7 +134,7 @@ def test_transform_sql_table_with_primary_key(
         (
             {"types": {"age": int}},
             [
-                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER,\n   [name] TEXT,\n   [age] INTEGER\n);",
+                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT,\n   [age] INTEGER\n);",
                 "INSERT INTO [dogs_new_suffix] ([rowid], [id], [name], [age])\n   SELECT [rowid], [id], [name], [age] FROM [dogs];",
                 "DROP TABLE [dogs];",
                 "ALTER TABLE [dogs_new_suffix] RENAME TO [dogs];",
@@ -144,7 +144,7 @@ def test_transform_sql_table_with_primary_key(
         (
             {"rename": {"age": "dog_age"}},
             [
-                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER,\n   [name] TEXT,\n   [dog_age] TEXT\n);",
+                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT,\n   [dog_age] TEXT\n);",
                 "INSERT INTO [dogs_new_suffix] ([rowid], [id], [name], [dog_age])\n   SELECT [rowid], [id], [name], [age] FROM [dogs];",
                 "DROP TABLE [dogs];",
                 "ALTER TABLE [dogs_new_suffix] RENAME TO [dogs];",
