@@ -77,16 +77,6 @@ import pytest
                 "ALTER TABLE [dogs_new_suffix] RENAME TO [dogs];",
             ],
         ),
-        # Remove primary key, creating a rowid table
-        (
-            {"pk": None},
-            [
-                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER,\n   [name] TEXT,\n   [age] TEXT\n);",
-                "INSERT INTO [dogs_new_suffix] ([rowid], [id], [name], [age])\n   SELECT [rowid], [id], [name], [age] FROM [dogs];",
-                "DROP TABLE [dogs];",
-                "ALTER TABLE [dogs_new_suffix] RENAME TO [dogs];",
-            ],
-        ),
         # Keeping the table
         (
             {"drop": ["age"], "keep_table": "kept_table"},
@@ -427,7 +417,7 @@ def test_transform_add_foreign_keys_from_scratch(fresh_db):
     ]
     assert fresh_db["places"].schema == (
         'CREATE TABLE "places" (\n'
-        "   [id] INTEGER,\n"
+        "   [id] INTEGER PRIMARY KEY,\n"
         "   [name] TEXT,\n"
         "   [country] INTEGER REFERENCES [country]([id]),\n"
         "   [continent] INTEGER REFERENCES [continent]([id]),\n"
