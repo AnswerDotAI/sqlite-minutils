@@ -473,7 +473,7 @@ def test_transform_replace_foreign_keys(fresh_db, foreign_keys):
     fresh_db["places"].transform(foreign_keys=foreign_keys)
     assert fresh_db["places"].schema == (
         'CREATE TABLE "places" (\n'
-        "   [id] INTEGER,\n"
+        "   [id] INTEGER PRIMARY KEY,\n"
         "   [name] TEXT,\n"
         "   [country] INTEGER REFERENCES [country]([id]),\n"
         "   [continent] INTEGER REFERENCES [continent]([id]),\n"

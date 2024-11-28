@@ -40,6 +40,7 @@ def test_create_table(fresh_db):
     )
     assert ["test_table"] == fresh_db.table_names()
     assert [
+        {"name": "id", "type": "INTEGER"},
         {"name": "text_col", "type": "TEXT"},
         {"name": "float_col", "type": "FLOAT"},
         {"name": "int_col", "type": "INTEGER"},
@@ -49,6 +50,7 @@ def test_create_table(fresh_db):
     ] == [{"name": col.name, "type": col.type} for col in table.columns]
     assert (
         "CREATE TABLE [test_table] (\n"
+        "   [id] INTEGER PRIMARY KEY,\n"        
         "   [text_col] TEXT,\n"
         "   [float_col] FLOAT,\n"
         "   [int_col] INTEGER,\n"
@@ -94,11 +96,11 @@ def test_create_table_with_defaults(fresh_db):
         defaults={"score": 1, "name": "bob''bob"},
     )
     assert ["players"] == fresh_db.table_names()
-    assert [{"name": "name", "type": "TEXT"}, {"name": "score", "type": "INTEGER"}] == [
+    assert [{"name": "id", "type": "INTEGER"}, {"name": "name", "type": "TEXT"}, {"name": "score", "type": "INTEGER"}] == [
         {"name": col.name, "type": col.type} for col in table.columns
     ]
     assert (
-        "CREATE TABLE [players] (\n   [name] TEXT DEFAULT 'bob''''bob',\n   [score] INTEGER DEFAULT 1\n)"
+        "CREATE TABLE [players] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT DEFAULT 'bob''''bob',\n   [score] INTEGER DEFAULT 1\n)"
     ) == table.schema
 
 
@@ -117,11 +119,11 @@ def test_create_table_with_not_null(fresh_db):
         defaults={"score": 3},
     )
     assert ["players"] == fresh_db.table_names()
-    assert [{"name": "name", "type": "TEXT"}, {"name": "score", "type": "INTEGER"}] == [
+    assert [{"name": "id", "type": "INTEGER"}, {"name": "name", "type": "TEXT"}, {"name": "score", "type": "INTEGER"}] == [
         {"name": col.name, "type": col.type} for col in table.columns
     ]
     assert (
-        "CREATE TABLE [players] (\n   [name] TEXT NOT NULL,\n   [score] INTEGER NOT NULL DEFAULT 3\n)"
+        "CREATE TABLE [players] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT NOT NULL,\n   [score] INTEGER NOT NULL DEFAULT 3\n)"
     ) == table.schema
 
 
@@ -130,23 +132,23 @@ def test_create_table_with_not_null(fresh_db):
     (
         (
             {"name": "Ravi", "age": 63},
-            [{"name": "name", "type": "TEXT"}, {"name": "age", "type": "INTEGER"}],
+            [{'name': 'id', 'type':'INTEGER'}, {"name": "name", "type": "TEXT"}, {"name": "age", "type": "INTEGER"}],
         ),
         (
             {"create": "Reserved word", "table": "Another"},
-            [{"name": "create", "type": "TEXT"}, {"name": "table", "type": "TEXT"}],
+            [{'name': 'id', 'type':'INTEGER'}, {"name": "create", "type": "TEXT"}, {"name": "table", "type": "TEXT"}],
         ),
-        ({"day": datetime.time(11, 0)}, [{"name": "day", "type": "TEXT"}]),
-        ({"decimal": decimal.Decimal("1.2")}, [{"name": "decimal", "type": "FLOAT"}]),
+        ({"day": datetime.time(11, 0)}, [{'name': 'id', 'type':'INTEGER'}, {"name": "day", "type": "TEXT"}]),
+        ({"decimal": decimal.Decimal("1.2")}, [{'name': 'id', 'type':'INTEGER'}, {"name": "decimal", "type": "FLOAT"}]),
         (
             {"memoryview": memoryview(b"hello")},
-            [{"name": "memoryview", "type": "BLOB"}],
+            [{'name': 'id', 'type':'INTEGER'}, {"name": "memoryview", "type": "BLOB"}],
         ),
-        ({"uuid": uuid.uuid4()}, [{"name": "uuid", "type": "TEXT"}]),
-        ({"foo[bar]": 1}, [{"name": "foo_bar_", "type": "INTEGER"}]),
+        ({"uuid": uuid.uuid4()}, [{'name': 'id', 'type':'INTEGER'}, {"name": "uuid", "type": "TEXT"}]),
+        ({"foo[bar]": 1}, [{'name': 'id', 'type':'INTEGER'}, {"name": "foo_bar_", "type": "INTEGER"}]),
         (
             {"timedelta": datetime.timedelta(hours=1)},
-            [{"name": "timedelta", "type": "TEXT"}],
+            [{'name': 'id', 'type':'INTEGER'}, {"name": "timedelta", "type": "TEXT"}],
         ),
     ),
 )
@@ -210,6 +212,7 @@ def test_create_table_column_order(fresh_db, use_table_factory):
     else:
         fresh_db["table"].insert(row, column_order=column_order)
     assert [
+        {'name': 'id', 'type': 'INTEGER'},
         {"name": "abc", "type": "TEXT"},
         {"name": "ccc", "type": "TEXT"},
         {"name": "zzz", "type": "TEXT"},
@@ -267,6 +270,7 @@ def test_create_table_works_for_m2m_with_only_foreign_keys(
     else:
         do_it()
     assert [
+        {'name': 'id', 'type': 'INTEGER'},
         {"name": "one_id", "type": "INTEGER"},
         {"name": "two_id", "type": "INTEGER"},
     ] == [{"name": col.name, "type": col.type} for col in fresh_db["m2m"].columns]
@@ -334,58 +338,58 @@ def test_create_error_if_invalid_self_referential_foreign_keys(fresh_db):
             "nickname",
             str,
             None,
-            "CREATE TABLE [dogs] (\n   [name] TEXT\n, [nickname] TEXT)",
+            'CREATE TABLE [dogs] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT\n, [nickname] TEXT)',
         ),
         (
             "dob",
             datetime.date,
             None,
-            "CREATE TABLE [dogs] (\n   [name] TEXT\n, [dob] TEXT)",
+            "CREATE TABLE [dogs] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT\n, [dob] TEXT)",
         ),
-        ("age", int, None, "CREATE TABLE [dogs] (\n   [name] TEXT\n, [age] INTEGER)"),
+        ("age", int, None, "CREATE TABLE [dogs] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT\n, [age] INTEGER)"),
         (
             "weight",
             float,
             None,
-            "CREATE TABLE [dogs] (\n   [name] TEXT\n, [weight] FLOAT)",
+            "CREATE TABLE [dogs] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT\n, [weight] FLOAT)",
         ),
-        ("text", "TEXT", None, "CREATE TABLE [dogs] (\n   [name] TEXT\n, [text] TEXT)"),
+        ("text", "TEXT", None, "CREATE TABLE [dogs] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT\n, [text] TEXT)"),
         (
             "integer",
             "INTEGER",
             None,
-            "CREATE TABLE [dogs] (\n   [name] TEXT\n, [integer] INTEGER)",
+            "CREATE TABLE [dogs] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT\n, [integer] INTEGER)",
         ),
         (
             "float",
             "FLOAT",
             None,
-            "CREATE TABLE [dogs] (\n   [name] TEXT\n, [float] FLOAT)",
+            "CREATE TABLE [dogs] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT\n, [float] FLOAT)",
         ),
-        ("blob", "blob", None, "CREATE TABLE [dogs] (\n   [name] TEXT\n, [blob] BLOB)"),
+        ("blob", "blob", None, "CREATE TABLE [dogs] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT\n, [blob] BLOB)"),
         (
             "default_str",
             None,
             None,
-            "CREATE TABLE [dogs] (\n   [name] TEXT\n, [default_str] TEXT)",
+            "CREATE TABLE [dogs] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT\n, [default_str] TEXT)",
         ),
         (
             "nickname",
             str,
             "",
-            "CREATE TABLE [dogs] (\n   [name] TEXT\n, [nickname] TEXT NOT NULL DEFAULT '')",
+            "CREATE TABLE [dogs] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT\n, [nickname] TEXT NOT NULL DEFAULT '')",
         ),
         (
             "nickname",
             str,
             "dawg's dawg",
-            "CREATE TABLE [dogs] (\n   [name] TEXT\n, [nickname] TEXT NOT NULL DEFAULT 'dawg''s dawg')",
+            "CREATE TABLE [dogs] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT\n, [nickname] TEXT NOT NULL DEFAULT 'dawg''s dawg')",
         ),
     ),
 )
 def test_add_column(fresh_db, col_name, col_type, not_null_default, expected_schema):
     fresh_db.create_table("dogs", {"name": str})
-    assert fresh_db["dogs"].schema == "CREATE TABLE [dogs] (\n   [name] TEXT\n)"
+    assert fresh_db["dogs"].schema == 'CREATE TABLE [dogs] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT\n)'
     fresh_db["dogs"].add_column(col_name, col_type, not_null_default=not_null_default)
     assert fresh_db["dogs"].schema == expected_schema
 
@@ -490,8 +494,9 @@ def test_add_column_foreign_key(fresh_db):
     fresh_db["dogs"].add_column("breed_id", fk="breeds")
     assert fresh_db["dogs"].schema == (
         'CREATE TABLE "dogs" (\n'
+        "   [id] INTEGER PRIMARY KEY,\n"
         "   [name] TEXT,\n"
-        "   [breed_id] INTEGER REFERENCES [breeds]([rowid])\n"
+        "   [breed_id] INTEGER REFERENCES [breeds]([id])\n"
         ")"
     )
     # And again with an explicit primary key column
@@ -499,8 +504,9 @@ def test_add_column_foreign_key(fresh_db):
     fresh_db["dogs"].add_column("subbreed_id", fk="subbreeds")
     assert fresh_db["dogs"].schema == (
         'CREATE TABLE "dogs" (\n'
+        "   [id] INTEGER PRIMARY KEY,\n"
         "   [name] TEXT,\n"
-        "   [breed_id] INTEGER REFERENCES [breeds]([rowid]),\n"
+        "   [breed_id] INTEGER REFERENCES [breeds]([id]),\n"
         "   [subbreed_id] TEXT REFERENCES [subbreeds]([primkey])\n"
         ")"
     )
@@ -513,6 +519,7 @@ def test_add_foreign_key_guess_table(fresh_db):
     fresh_db["dogs"].add_foreign_key("breed_id")
     assert fresh_db["dogs"].schema == (
         'CREATE TABLE "dogs" (\n'
+        "   [id] INTEGER PRIMARY KEY,\n"
         "   [name] TEXT,\n"
         "   [breed_id] INTEGER REFERENCES [breeds]([id])\n"
         ")"
@@ -562,6 +569,7 @@ def test_insert_row_alter_table(
     table = fresh_db["books"]
     table.insert({"title": "Hedgehogs of the world", "author_id": 1})
     assert [
+        {"name": "id", "type": "INTEGER"},
         {"name": "title", "type": "TEXT"},
         {"name": "author_id", "type": "INTEGER"},
     ] == [{"name": col.name, "type": col.type} for col in table.columns]
@@ -572,6 +580,7 @@ def test_insert_row_alter_table(
     else:
         fresh_db["books"].insert(record, alter=True)
     assert [
+        {"name": "id", "type": "INTEGER"},
         {"name": "title", "type": "TEXT"},
         {"name": "author_id", "type": "INTEGER"},
     ] + expected_new_columns == [
@@ -654,10 +663,10 @@ def test_insert_all_with_extra_columns_in_later_chunks(fresh_db):
     ]
     fresh_db["t"].insert_all(chunk, batch_size=2, alter=True)
     assert list(fresh_db["t"].rows) == [
-        {"record": "Record 1", "extra": None},
-        {"record": "Record 2", "extra": None},
-        {"record": "Record 3", "extra": None},
-        {"record": "Record 4", "extra": 1},
+        {'id': 1, "record": "Record 1", "extra": None},
+        {'id': 2, "record": "Record 2", "extra": None},
+        {'id': 3, "record": "Record 3", "extra": None},
+        {'id': 4, "record": "Record 4", "extra": 1},
     ]
 
 
@@ -873,7 +882,7 @@ def test_insert_uuid(fresh_db):
     uuid4 = uuid.uuid4()
     fresh_db["test"].insert({"uuid": uuid4})
     row = list(fresh_db["test"].rows)[0]
-    assert {"uuid"} == row.keys()
+    assert {'id', "uuid"} == row.keys()
     assert isinstance(row["uuid"], str)
     assert row["uuid"] == str(uuid4)
 
@@ -881,7 +890,7 @@ def test_insert_uuid(fresh_db):
 def test_insert_memoryview(fresh_db):
     fresh_db["test"].insert({"data": memoryview(b"hello")})
     row = list(fresh_db["test"].rows)[0]
-    assert {"data"} == row.keys()
+    assert {'id', "data"} == row.keys()
     assert isinstance(row["data"], bytes)
     assert row["data"] == b"hello"
 
@@ -890,7 +899,7 @@ def test_insert_thousands_using_generator(fresh_db):
     fresh_db["test"].insert_all(
         {"i": i, "word": "word_{}".format(i)} for i in range(10000)
     )
-    assert [{"name": "i", "type": "INTEGER"}, {"name": "word", "type": "TEXT"}] == [
+    assert [{'name': 'id', 'type': 'INTEGER'}, {"name": "i", "type": "INTEGER"}, {"name": "word", "type": "TEXT"}] == [
         {"name": col.name, "type": col.type} for col in fresh_db["test"].columns
     ]
     assert fresh_db["test"].count == 10000
@@ -913,7 +922,7 @@ def test_insert_thousands_adds_extra_columns_after_first_100_with_alter(fresh_db
         alter=True,
     )
     rows = list(fresh_db.query("select * from test where i = 101"))
-    assert rows == [{"i": 101, "word": None, "extra": "Should trigger ALTER"}]
+    assert rows == [{'id': 101, "i": 101, "word": None, "extra": "Should trigger ALTER"}]
 
 
 def test_insert_ignore(fresh_db):
@@ -984,9 +993,9 @@ def test_create_table_numpy(fresh_db):
     df = pd.DataFrame({"col 1": range(3), "col 2": range(3)})
     fresh_db["pandas"].insert_all(df.to_dict(orient="records"))
     assert [
-        {"col 1": 0, "col 2": 0},
-        {"col 1": 1, "col 2": 1},
-        {"col 1": 2, "col 2": 2},
+        {'id': 1, "col 1": 0, "col 2": 0},
+        {'id': 2, "col 1": 1, "col 2": 1},
+        {'id': 3, "col 1": 2, "col 2": 2},
     ] == list(fresh_db["pandas"].rows)
     # Now try all the different types
     df = pd.DataFrame(
@@ -1035,6 +1044,7 @@ def test_create_table_numpy(fresh_db):
     fresh_db["types"].insert_all(df.to_dict(orient="records"))
     assert [
         {
+            'id': 1,
             "np.float16": 16.5,
             "np.float32": 32.5,
             "np.float64": 64.5,
@@ -1127,6 +1137,7 @@ def test_insert_all_analyze(fresh_db, method_name):
 def test_create_with_a_null_column(fresh_db):
     record = {"name": "Name", "description": None}
     fresh_db["t"].insert(record)
+    record['id'] = fresh_db["t"].last_pk
     assert [record] == list(fresh_db["t"].rows)
 
 
@@ -1148,19 +1159,19 @@ def test_quote(fresh_db, input, expected):
     (
         (
             {"id": int},
-            "[id] INTEGER",
+            "[id] INTEGER PRIMARY KEY",
         ),
         (
             {"col": dict},
-            "[col] TEXT",
+            "[id] INTEGER PRIMARY KEY,\n   [col] TEXT",
         ),
         (
             {"col": tuple},
-            "[col] TEXT",
+            "[id] INTEGER PRIMARY KEY,\n   [col] TEXT",
         ),
         (
             {"col": list},
-            "[col] TEXT",
+            "[id] INTEGER PRIMARY KEY,\n   [col] TEXT",
         ),
     ),
 )
@@ -1226,7 +1237,7 @@ def test_create_replace(fresh_db):
         fresh_db["t"].create({"id": int})
     # This should not
     fresh_db["t"].create({"name": str}, replace=True)
-    assert fresh_db["t"].schema == ("CREATE TABLE [t] (\n" "   [name] TEXT\n" ")")
+    assert fresh_db["t"].schema == 'CREATE TABLE [t] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT\n)'
 
 
 @pytest.mark.parametrize(
@@ -1240,7 +1251,7 @@ def test_create_replace(fresh_db):
             False,
         ),
         # Drop name column, remove primary key
-        ({"id": int}, {}, 'CREATE TABLE "demo" (\n   [id] INTEGER\n)', True),
+        ({"id": int}, {}, 'CREATE TABLE "demo" (\n   [id] INTEGER PRIMARY KEY\n)', True),
         # Add a new column
         (
             {"id": int, "name": str, "age": int},
@@ -1310,7 +1321,7 @@ def test_rename_table(fresh_db):
     assert ["t"] == fresh_db.table_names()
     fresh_db.rename_table("t", "renamed")
     assert ["renamed"] == fresh_db.table_names()
-    assert [{"foo": "bar"}] == list(fresh_db["renamed"].rows)
+    assert [{'id': 1, "foo": "bar"}] == list(fresh_db["renamed"].rows)
     # Should error if table does not exist:
     with pytest.raises(sqlite3.OperationalError):
         fresh_db.rename_table("does_not_exist", "renamed")
