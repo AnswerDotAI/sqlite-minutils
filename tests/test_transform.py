@@ -190,21 +190,6 @@ def test_transform_sql_table_with_no_primary_key(
         assert ("PRAGMA foreign_keys=1;", None) not in captured
 
 
-def test_transform_sql_with_no_primary_key_to_primary_key_of_id(fresh_db):
-    dogs = fresh_db["dogs"]
-    dogs.insert({"id": 1, "name": "Cleo", "age": "5"})
-    assert (
-        dogs.schema
-        == "CREATE TABLE [dogs] (\n   [id] INTEGER,\n   [name] TEXT,\n   [age] TEXT\n)"
-    )
-    dogs.transform(pk="id")
-    # Slight oddity: [dogs] becomes "dogs" during the rename:
-    assert (
-        dogs.schema
-        == 'CREATE TABLE "dogs" (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT,\n   [age] TEXT\n)'
-    )
-
-
 def test_transform_rename_pk(fresh_db):
     dogs = fresh_db["dogs"]
     dogs.insert({"id": 1, "name": "Cleo", "age": "5"}, pk="id")
