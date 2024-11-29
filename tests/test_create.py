@@ -1368,3 +1368,4 @@ def test_create_strict(fresh_db, strict):
     table = fresh_db["t"]
     table.create({"id": int}, strict=strict)
     assert table.strict == strict or not fresh_db.supports_strict
+    

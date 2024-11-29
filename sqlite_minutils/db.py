@@ -954,6 +954,15 @@ class Database:
         if transform and self[name].exists():
             table = cast(Table, self[name])
             should_transform = False
+            # Has the primary key changed?
+            current_pks = table.pks
+            desired_pk = None
+            if isinstance(pk, str):
+                desired_pk = [pk]
+            elif pk:
+                desired_pk = list(pk)
+            if desired_pk and current_pks != desired_pk:
+                should_transform = True            
             # First add missing columns and figure out columns to drop
             existing_columns = table.columns_dict
             missing_columns = dict(
@@ -964,6 +973,14 @@ class Database:
             columns_to_drop = [
                 column for column in existing_columns if column not in columns
             ]
+            # If no primary key was specified and id was added automatically, we prevent
+            # it from being deleted here or Sqlite will complain that a primary key is
+            # being dropped. We delete the ID column once a new PK has been set.
+            delete_id_column = False
+            if table.pks == ['id'] and 'id' in columns_to_drop:
+                columns_to_drop.remove('id')
+                delete_id_column = True
+
             if columns_to_drop:
                 for col_name in columns_to_drop: table.drop_column(col_name)
             if missing_columns:
@@ -976,15 +993,6 @@ class Database:
                 column_order
                 and list(existing_columns)[: len(column_order)] != column_order
             ):
-                should_transform = True
-            # Has the primary key changed?
-            current_pks = table.pks
-            desired_pk = None
-            if isinstance(pk, str):
-                desired_pk = [pk]
-            elif pk:
-                desired_pk = list(pk)
-            if desired_pk and current_pks != desired_pk:
                 should_transform = True
             # Any not-null changes?
             current_not_null = {c.name for c in table.columns if c.notnull}
@@ -1003,6 +1011,9 @@ class Database:
                     defaults=defaults,
                     pk=pk,
                 )
+            # There has been set a primary key that isn't ['id'].It is now safe to drop the ID column.
+            if delete_id_column and table.pks != ['id']:
+                table.drop_column('id')
             return table
         sql = self.create_table_sql(
             name=name,

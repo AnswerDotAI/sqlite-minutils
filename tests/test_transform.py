@@ -1,4 +1,4 @@
-from sqlite_minutils.db import ForeignKey
+from sqlite_minutils.db import ForeignKey, Database
 from sqlite_minutils.utils import OperationalError
 from sqlite3 import IntegrityError
 import pytest
@@ -521,3 +521,22 @@ def test_transform_strict(fresh_db, strict):
     assert dogs.strict == strict or not fresh_db.supports_strict
     dogs.transform(not_null={"name"})
     assert dogs.strict == strict or not fresh_db.supports_strict
+
+
+def test_create_twice(fresh_db):
+    columns = {'name': str}
+    fresh_db['demo'].create(columns=columns)
+    fresh_db['demo'].create(columns=columns, transform=True)
+
+def test_create_twice_with_pk_change(fresh_db):
+    columns = {'name': str}
+    fresh_db['demo'].create(columns=columns)
+    new_columns = {'name': str, 'age': int}
+    fresh_db['demo'].create(columns=new_columns, transform=True, pk='age')
+
+def test_create_thrice_with_pk_change(fresh_db):
+    columns = {'name': str}
+    fresh_db['demo'].create(columns=columns)
+    new_columns = {'name': str, 'age': int}
+    fresh_db['demo'].create(columns=new_columns, transform=True, pk='age')
+    fresh_db['demo'].create(columns=new_columns, transform=True, pk='age')
