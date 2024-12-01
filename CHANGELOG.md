@@ -1,11 +1,16 @@
 # Release notes
 
+## 4.0.3
+
+### New Features
+
+- Add `returning` to DDL
+
 ## 4.0.2
 
 ### Bugs fixed
 
 - execute does not work with named params
-
 
 ## 4.0.1
 
