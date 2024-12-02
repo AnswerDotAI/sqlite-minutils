@@ -192,7 +192,7 @@ def test_uses_existing_m2m_table_if_exists(fresh_db):
     assert fresh_db["tagged"].exists()
     assert not fresh_db["people_tags"].exists()
     assert not fresh_db["tags_people"].exists()
-    assert [{"people_id": 1, "tags_id": 1}] == list(fresh_db["tagged"].rows)
+    assert [{'id': 1,"people_id": 1, "tags_id": 1}] == list(fresh_db["tagged"].rows)
 
 
 def test_requires_explicit_m2m_table_if_multiple_options(fresh_db):

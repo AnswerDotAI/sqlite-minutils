@@ -122,6 +122,7 @@ def test_extract_rowid_table(fresh_db):
     fresh_db["tree"].extract(["common_name", "latin_name"])
     assert fresh_db["tree"].schema == (
         'CREATE TABLE "tree" (\n'
+        '   [id] INTEGER PRIMARY KEY,\n'
         "   [name] TEXT,\n"
         "   [common_name_latin_name_id] INTEGER REFERENCES [common_name_latin_name]([id])\n"
         ")"
