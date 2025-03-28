@@ -9,6 +9,7 @@ import contextlib, datetime, decimal, inspect, itertools, json, os, pathlib, re,
 from typing import ( cast, Any, Callable, Dict, Generator, Iterable, Union, Optional, List, Tuple,Iterator)
 from functools import cache
 import uuid
+import time
 
 try: from sqlite_dump import iterdump
 except ImportError: iterdump = None
@@ -427,6 +428,26 @@ class Database:
             yield dict(zip(keys, row))
 
     def execute(
+        self, sql: str, parameters: Optional[Union[Iterable, dict]] = None
+    ) -> sqlite3.Cursor:
+        while True:
+            try:
+                return self._orig_execute(sql=sql, parameters=parameters)   
+            except sqlite3.OperationalError as e:
+                # Catch the unfortunately generic error sqlite3.OperationalError
+                # to determine if this is a concurrency issue
+                if "cannot start a transaction within a transaction" in str(e).lower():
+                    # Probably a concurrency issue, retry
+                    # We could make this more precise with time.perf_counter but
+                    # imprecision here is a good thing as it adds jitter
+                    # Yes, this avoids exponential backoff for REASONS
+                    time.sleep(0.001)
+                    continue
+                # Since this isn't a transaction failure, we re-raise the issue so
+                # other logic in this library can handle it
+                raise
+
+    def _orig_execute(
         self, sql: str, parameters: Optional[Union[Iterable, dict]] = None
     ) -> sqlite3.Cursor:
         """
