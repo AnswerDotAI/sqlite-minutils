@@ -17,7 +17,7 @@ import json
 import pathlib
 import pytest
 import uuid
-
+import apsw
 
 try:
     import pandas as pd  # type: ignore
@@ -1077,7 +1077,7 @@ def test_drop_view(fresh_db):
 
 
 def test_drop_ignore(fresh_db):
-    with pytest.raises(sqlite3.OperationalError):
+    with pytest.raises(apsw.SQLError):
         fresh_db["does_not_exist"].drop()
     fresh_db["does_not_exist"].drop(ignore=True)
     # Testing view is harder, we need to create it in order
@@ -1086,7 +1086,7 @@ def test_drop_ignore(fresh_db):
     view = fresh_db["foo_view"]
     assert isinstance(view, View)
     view.drop()
-    with pytest.raises(sqlite3.OperationalError):
+    with pytest.raises(apsw.SQLError):
         view.drop()
     view.drop(ignore=True)
 
@@ -1198,7 +1198,7 @@ def test_create(fresh_db):
 def test_create_if_not_exists(fresh_db):
     fresh_db["t"].create({"id": int})
     # This should error
-    with pytest.raises(sqlite3.OperationalError):
+    with pytest.raises(apsw.SQLError):
         fresh_db["t"].create({"id": int})
     # This should not
     fresh_db["t"].create({"id": int}, if_not_exists=True)
@@ -1213,7 +1213,7 @@ def test_create_if_no_columns(fresh_db):
 def test_create_ignore(fresh_db):
     fresh_db["t"].create({"id": int})
     # This should error
-    with pytest.raises(sqlite3.OperationalError):
+    with pytest.raises(apsw.SQLError):
         fresh_db["t"].create({"id": int})
     # This should not
     fresh_db["t"].create({"id": int}, ignore=True)
@@ -1222,7 +1222,7 @@ def test_create_ignore(fresh_db):
 def test_create_replace(fresh_db):
     fresh_db["t"].create({"id": int})
     # This should error
-    with pytest.raises(sqlite3.OperationalError):
+    with pytest.raises(apsw.SQLError):
         fresh_db["t"].create({"id": int})
     # This should not
     fresh_db["t"].create({"name": str}, replace=True)
@@ -1312,7 +1312,7 @@ def test_rename_table(fresh_db):
     assert ["renamed"] == fresh_db.table_names()
     assert [{"foo": "bar"}] == list(fresh_db["renamed"].rows)
     # Should error if table does not exist:
-    with pytest.raises(sqlite3.OperationalError):
+    with pytest.raises(sqlite3.SQLError):
         fresh_db.rename_table("does_not_exist", "renamed")
 
 
