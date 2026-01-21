@@ -7,7 +7,7 @@ def test_query(fresh_db):
     fresh_db["dogs"].insert_all([{"name": "Cleo"}, {"name": "Pancakes"}])
     results = fresh_db.query("select * from dogs order by name desc")
     assert isinstance(results, types.GeneratorType)
-    assert list(results) == [{"name": "Pancakes"}, {"name": "Cleo"}]
+    assert list(results) == [{'id':2, "name": "Pancakes"}, {'id':1, "name": "Cleo"}]
 
 
 def test_execute_returning_dicts(fresh_db):
@@ -24,4 +24,4 @@ def test_query_no_update(fresh_db):
     fresh_db["message"].insert({"msg_type": "greeting", "content": "hello"})
     results = fresh_db.query("update message set msg_type='note' where msg_type='md'")
     assert list(results) == []
-    assert list(fresh_db["message"].rows) == [{"msg_type": "greeting", "content": "hello"}]
+    assert list(fresh_db["message"].rows) == [{'id':1,"msg_type": "greeting", "content": "hello"}]

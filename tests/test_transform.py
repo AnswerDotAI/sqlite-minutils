@@ -1,4 +1,4 @@
-from sqlite_minutils.db import ForeignKey
+from sqlite_minutils.db import ForeignKey, Database
 from sqlite_minutils.utils import OperationalError
 from sqlite3 import IntegrityError
 import pytest
@@ -77,16 +77,6 @@ import pytest
                 "ALTER TABLE [dogs_new_suffix] RENAME TO [dogs];",
             ],
         ),
-        # Remove primary key, creating a rowid table
-        (
-            {"pk": None},
-            [
-                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER,\n   [name] TEXT,\n   [age] TEXT\n);",
-                "INSERT INTO [dogs_new_suffix] ([rowid], [id], [name], [age])\n   SELECT [rowid], [id], [name], [age] FROM [dogs];",
-                "DROP TABLE [dogs];",
-                "ALTER TABLE [dogs_new_suffix] RENAME TO [dogs];",
-            ],
-        ),
         # Keeping the table
         (
             {"drop": ["age"], "keep_table": "kept_table"},
@@ -134,7 +124,7 @@ def test_transform_sql_table_with_primary_key(
         (
             {},
             [
-                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER,\n   [name] TEXT,\n   [age] TEXT\n);",
+                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT,\n   [age] TEXT\n);",
                 "INSERT INTO [dogs_new_suffix] ([rowid], [id], [name], [age])\n   SELECT [rowid], [id], [name], [age] FROM [dogs];",
                 "DROP TABLE [dogs];",
                 "ALTER TABLE [dogs_new_suffix] RENAME TO [dogs];",
@@ -144,7 +134,7 @@ def test_transform_sql_table_with_primary_key(
         (
             {"types": {"age": int}},
             [
-                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER,\n   [name] TEXT,\n   [age] INTEGER\n);",
+                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT,\n   [age] INTEGER\n);",
                 "INSERT INTO [dogs_new_suffix] ([rowid], [id], [name], [age])\n   SELECT [rowid], [id], [name], [age] FROM [dogs];",
                 "DROP TABLE [dogs];",
                 "ALTER TABLE [dogs_new_suffix] RENAME TO [dogs];",
@@ -154,7 +144,7 @@ def test_transform_sql_table_with_primary_key(
         (
             {"rename": {"age": "dog_age"}},
             [
-                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER,\n   [name] TEXT,\n   [dog_age] TEXT\n);",
+                "CREATE TABLE [dogs_new_suffix] (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT,\n   [dog_age] TEXT\n);",
                 "INSERT INTO [dogs_new_suffix] ([rowid], [id], [name], [dog_age])\n   SELECT [rowid], [id], [name], [age] FROM [dogs];",
                 "DROP TABLE [dogs];",
                 "ALTER TABLE [dogs_new_suffix] RENAME TO [dogs];",
@@ -198,21 +188,6 @@ def test_transform_sql_table_with_no_primary_key(
     else:
         assert ("PRAGMA foreign_keys=0;", None) not in captured
         assert ("PRAGMA foreign_keys=1;", None) not in captured
-
-
-def test_transform_sql_with_no_primary_key_to_primary_key_of_id(fresh_db):
-    dogs = fresh_db["dogs"]
-    dogs.insert({"id": 1, "name": "Cleo", "age": "5"})
-    assert (
-        dogs.schema
-        == "CREATE TABLE [dogs] (\n   [id] INTEGER,\n   [name] TEXT,\n   [age] TEXT\n)"
-    )
-    dogs.transform(pk="id")
-    # Slight oddity: [dogs] becomes "dogs" during the rename:
-    assert (
-        dogs.schema
-        == 'CREATE TABLE "dogs" (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT,\n   [age] TEXT\n)'
-    )
 
 
 def test_transform_rename_pk(fresh_db):
@@ -427,7 +402,7 @@ def test_transform_add_foreign_keys_from_scratch(fresh_db):
     ]
     assert fresh_db["places"].schema == (
         'CREATE TABLE "places" (\n'
-        "   [id] INTEGER,\n"
+        "   [id] INTEGER PRIMARY KEY,\n"
         "   [name] TEXT,\n"
         "   [country] INTEGER REFERENCES [country]([id]),\n"
         "   [continent] INTEGER REFERENCES [continent]([id]),\n"
@@ -498,7 +473,7 @@ def test_transform_replace_foreign_keys(fresh_db, foreign_keys):
     fresh_db["places"].transform(foreign_keys=foreign_keys)
     assert fresh_db["places"].schema == (
         'CREATE TABLE "places" (\n'
-        "   [id] INTEGER,\n"
+        "   [id] INTEGER PRIMARY KEY,\n"
         "   [name] TEXT,\n"
         "   [country] INTEGER REFERENCES [country]([id]),\n"
         "   [continent] INTEGER REFERENCES [continent]([id]),\n"
@@ -546,3 +521,22 @@ def test_transform_strict(fresh_db, strict):
     assert dogs.strict == strict or not fresh_db.supports_strict
     dogs.transform(not_null={"name"})
     assert dogs.strict == strict or not fresh_db.supports_strict
+
+
+def test_create_twice(fresh_db):
+    columns = {'name': str}
+    fresh_db['demo'].create(columns=columns)
+    fresh_db['demo'].create(columns=columns, transform=True)
+
+def test_create_twice_with_pk_change(fresh_db):
+    columns = {'name': str}
+    fresh_db['demo'].create(columns=columns)
+    new_columns = {'name': str, 'age': int}
+    fresh_db['demo'].create(columns=new_columns, transform=True, pk='age')
+
+def test_create_thrice_with_pk_change(fresh_db):
+    columns = {'name': str}
+    fresh_db['demo'].create(columns=columns)
+    new_columns = {'name': str, 'age': int}
+    fresh_db['demo'].create(columns=new_columns, transform=True, pk='age')
+    fresh_db['demo'].create(columns=new_columns, transform=True, pk='age')

@@ -17,7 +17,7 @@ def test_memory_name():
     db1 = Database(memory_name="shared")
     db2 = Database(memory_name="shared")
     db1["dogs"].insert({"name": "Cleo"})
-    assert list(db2["dogs"].rows) == [{"name": "Cleo"}]
+    assert list(db2["dogs"].rows) == [{'id': 1, "name": "Cleo"}]
 
 
 def test_sqlite_version():
