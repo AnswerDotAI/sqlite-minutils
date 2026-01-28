@@ -3,19 +3,16 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name="sqlite-minutils"
+name = "sqlite-minutils"
 dynamic = ["version"]
 description = "A fork of sqlite-utils with CLI etc removed"
 readme = "README.md"
-requires-python=">=3.9"
+requires-python = ">=3.9"
 license = {text = "Apache-2.0"}
 authors = [{name = "Jeremy Howard", email = "github@jhoward.fastmail.fm"}]
 keywords = ['nbdev', 'jupyter', 'notebook', 'python']
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3 :: Only",
-]
-dependencies = ["fastcore"]
+classifiers = ["Natural Language :: English", "Intended Audience :: Developers", "Development Status :: 3 - Alpha", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3 :: Only"]
+dependencies = ['fastcore']
 
 [project.urls]
 Repository = "https://github.com/AnswerDotAI/sqlite-minutils"
