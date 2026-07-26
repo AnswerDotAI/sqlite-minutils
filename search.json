@@ -1,0 +1,52 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "sqlite-minutils",
+    "section": "",
+    "text": "TipWhere to find the complete documentation for this library\n\n\n\nIf you want to learn about everything this project can do, we recommend reading the Python library section of the sqlite-utils project here.\nThis project wouldn’t exist without Simon Willison and his excellent sqlite-utils project. Most of this project is his code, with some minor changes made to it.",
+    "crumbs": [
+      "sqlite-minutils"
+    ]
+  },
+  {
+    "objectID": "index.html#install",
+    "href": "index.html#install",
+    "title": "sqlite-minutils",
+    "section": "Install",
+    "text": "Install\npip install sqlite-minutils",
+    "crumbs": [
+      "sqlite-minutils"
+    ]
+  },
+  {
+    "objectID": "index.html#use",
+    "href": "index.html#use",
+    "title": "sqlite-minutils",
+    "section": "Use",
+    "text": "Use\nFirst, import the sqlite-miniutils library. Through the use of the all attribute in our Python modules by using import * we only bring in the Database, Queryable, Table, View classes. There’s no risk of namespace pollution.\n\nfrom sqlite_minutils.db import *\n\nThen we create a SQLite database. For the sake of convienance we’re doing it in-memory with the :memory: special string. If you wanted something more persistent, name it something not surrounded by colons, data.db is a common file name.\n\ndb = Database(\":memory:\")\n\nLet’s drop (aka ‘delete’) any tables that might exist. These docs also serve as a test harness, and we want to make certain we are starting with a clean slate. This also serves as a handy sneak preview of some of the features of this library.\n\nfor t in db.tables: t.drop()\n\nUser tables are a handy way to create a useful example with some real-world meaning. To do this, we first instantiate the users table object:\n\nusers = Table(db, 'Users')\nusers\n\n&lt;Table Users (does not exist yet)&gt;\n\n\nThe table doesn’t exist yet, so let’s add some columns via the Table.create method:\n\nusers.create(columns=dict(id=int, name=str, age=int))\nusers\n\n&lt;Table Users (id, name, age)&gt;\n\n\nWhat if we need to change the table structure?\nFor example User tables often include things like password field. Let’s add that now by calling create again, but this time with transform=True. We should now see that the users table now has the pwd:str field added.\n\nusers.create(columns=dict(id=int, name=str, age=int, pwd=str), transform=True, pk='id')\nusers\n\n&lt;Table Users (id, name, age, pwd)&gt;\n\n\n\nprint(db.schema)\n\nCREATE TABLE \"Users\" (\n   [id] INTEGER PRIMARY KEY,\n   [name] TEXT,\n   [age] INTEGER,\n   [pwd] TEXT\n);",
+    "crumbs": [
+      "sqlite-minutils"
+    ]
+  },
+  {
+    "objectID": "index.html#queries",
+    "href": "index.html#queries",
+    "title": "sqlite-minutils",
+    "section": "Queries",
+    "text": "Queries\nLet’s add some users to query:\n\nusers.insert(dict(name='Raven', age=8, pwd='s3cret'))\nusers.insert(dict(name='Magpie', age=5, pwd='supersecret'))\nusers.insert(dict(name='Crow', age=12, pwd='verysecret'))\nusers.insert(dict(name='Pigeon', age=3, pwd='keptsecret'))\nusers.insert(dict(name='Eagle', age=7, pwd='s3cr3t'))\n\n&lt;Table Users (id, name, age, pwd)&gt;\n\n\nA simple unfiltered select can be executed using rows property on the table object.\n\nusers.rows\n\n&lt;generator object Queryable.rows_where&gt;\n\n\nLet’s iterate over that generator to see the results:\n\n[o for o in users.rows]\n\n[{'id': 1, 'name': 'Raven', 'age': 8, 'pwd': 's3cret'},\n {'id': 2, 'name': 'Magpie', 'age': 5, 'pwd': 'supersecret'},\n {'id': 3, 'name': 'Crow', 'age': 12, 'pwd': 'verysecret'},\n {'id': 4, 'name': 'Pigeon', 'age': 3, 'pwd': 'keptsecret'},\n {'id': 5, 'name': 'Eagle', 'age': 7, 'pwd': 's3cr3t'}]\n\n\nFiltering can be done via the rows_where function:\n\n[o for o in users.rows_where('age &gt; 3')]\n\n[{'id': 1, 'name': 'Raven', 'age': 8, 'pwd': 's3cret'},\n {'id': 2, 'name': 'Magpie', 'age': 5, 'pwd': 'supersecret'},\n {'id': 3, 'name': 'Crow', 'age': 12, 'pwd': 'verysecret'},\n {'id': 5, 'name': 'Eagle', 'age': 7, 'pwd': 's3cr3t'}]\n\n\nWe can also limit the results:\n\n[o for o in users.rows_where('age &gt; 3', limit=2)]\n\n[{'id': 1, 'name': 'Raven', 'age': 8, 'pwd': 's3cret'},\n {'id': 2, 'name': 'Magpie', 'age': 5, 'pwd': 'supersecret'}]\n\n\nThe offset keyword can be combined with the limit keyword.\n\n[o for o in users.rows_where('age &gt; 3', limit=2, offset=1)]\n\n[{'id': 2, 'name': 'Magpie', 'age': 5, 'pwd': 'supersecret'},\n {'id': 3, 'name': 'Crow', 'age': 12, 'pwd': 'verysecret'}]\n\n\nThe offset must be used with limit or raise a ValueError:\n\ntry:\n    [o for o in users.rows_where(offset=1)]\nexcept ValueError as e:\n    print(e)\n\nCannot use offset without limit",
+    "crumbs": [
+      "sqlite-minutils"
+    ]
+  },
+  {
+    "objectID": "index.html#transactions",
+    "href": "index.html#transactions",
+    "title": "sqlite-minutils",
+    "section": "Transactions",
+    "text": "Transactions\nIf you have any SQL calls outside an explicit transaction, they are committed instantly.\nTo group 2 or more queries together into 1 transaction, wrap them in a BEGIN and COMMIT, executing ROLLBACK if an exception is caught:\n\nusers.get(1)\n\n{'id': 1, 'name': 'Raven', 'age': 8, 'pwd': 's3cret'}\n\n\n\ndb.begin()\ntry:\n    users.delete([1])\n    db.execute('FNOOORD')\n    db.commit()\nexcept Exception as e:\n    print(e)\n    db.rollback()\n\nnear \"FNOOORD\": syntax error\n\n\nBecause the transaction was rolled back, the user was not deleted:\n\nusers.get(1)\n\n{'id': 1, 'name': 'Raven', 'age': 8, 'pwd': 's3cret'}\n\n\nLet’s do it again, but without the DB error, to check the transaction is successful:\n\ndb.begin()\ntry:\n    users.delete([1])\n    db.commit()\nexcept Exception as e: db.rollback()\n\n\ntry:\n    users.get(1)\n    print(\"Delete failed!\")\nexcept: print(\"Delete succeeded!\")\n\nDelete succeeded!",
+    "crumbs": [
+      "sqlite-minutils"
+    ]
+  }
+]
