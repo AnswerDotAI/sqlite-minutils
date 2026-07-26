@@ -12,22 +12,24 @@ import sys
 import json
 from typing import Dict, cast, BinaryIO, Iterable, Optional, Tuple, Type
 
-try:
-    import pysqlite3 as sqlite3  # noqa: F401
-    from pysqlite3 import dbapi2  # noqa: F401
+# try:
+#     import pysqlite3 as sqlite3  # noqa: F401
+#     from pysqlite3 import dbapi2  # noqa: F401
 
-    OperationalError = dbapi2.OperationalError
-except ImportError:
-    try:
-        import sqlean as sqlite3  # noqa: F401
-        from sqlean import dbapi2  # noqa: F401
+#     OperationalError = dbapi2.OperationalError
+# except ImportError:
+#     try:
+#         import sqlean as sqlite3  # noqa: F401
+#         from sqlean import dbapi2  # noqa: F401
 
-        OperationalError = dbapi2.OperationalError
-    except ImportError:
-        import sqlite3  # noqa: F401
-        from sqlite3 import dbapi2  # noqa: F401
+#         OperationalError = dbapi2.OperationalError
+#     except ImportError:
+#         import sqlite3  # noqa: F401
+#         from sqlite3 import dbapi2  # noqa: F401
 
-        OperationalError = dbapi2.OperationalError
+#         OperationalError = dbapi2.OperationalError
+import apsw as sqlite3
+OperationalError = sqlite3.Error
 
 
 SPATIALITE_PATHS = (
