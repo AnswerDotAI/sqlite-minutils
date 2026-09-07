@@ -36,7 +36,7 @@ def test_extracts(fresh_db, kwargs, expected_table, use_table_factory):
         == fresh_db[expected_table].schema
     )
     assert (
-        "CREATE TABLE [Trees] (\n   [id] INTEGER,\n   [species_id] INTEGER REFERENCES [{}]([id])\n)".format(
+        "CREATE TABLE [Trees] (\n   [id] INTEGER PRIMARY KEY,\n   [species_id] INTEGER REFERENCES [{}]([id])\n)".format(
             expected_table
         )
         == fresh_db["Trees"].schema

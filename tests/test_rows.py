@@ -75,9 +75,9 @@ def test_pks_and_rows_where_rowid(fresh_db):
     table.insert_all({"number": i + 10} for i in range(3))
     pks_and_rows = list(table.pks_and_rows_where())
     assert pks_and_rows == [
-        (1, {"rowid": 1, "number": 10}),
-        (2, {"rowid": 2, "number": 11}),
-        (3, {"rowid": 3, "number": 12}),
+        (1, {"id": 1, "number": 10}),
+        (2, {"id": 2, "number": 11}),
+        (3, {"id": 3, "number": 12}),
     ]
 
 

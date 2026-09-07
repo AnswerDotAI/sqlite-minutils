@@ -1,13 +1,13 @@
 def test_insert_conversion(fresh_db):
     table = fresh_db["table"]
     table.insert({"foo": "bar"}, conversions={"foo": "upper(?)"})
-    assert [{"foo": "BAR"}] == list(table.rows)
+    assert [{'id':1, "foo": "BAR"}] == list(table.rows)
 
 
 def test_insert_all_conversion(fresh_db):
     table = fresh_db["table"]
     table.insert_all([{"foo": "bar"}], conversions={"foo": "upper(?)"})
-    assert [{"foo": "BAR"}] == list(table.rows)
+    assert [{'id':1, "foo": "BAR"}] == list(table.rows)
 
 
 def test_upsert_conversion(fresh_db):
@@ -38,4 +38,4 @@ def test_update_conversion(fresh_db):
 def test_table_constructor_conversion(fresh_db):
     table = fresh_db.table("table", conversions={"bar": "upper(?)"})
     table.insert({"bar": "baz"})
-    assert [{"bar": "BAZ"}] == list(table.rows)
+    assert [{'id':1,"bar": "BAZ"}] == list(table.rows)

@@ -7,9 +7,7 @@ import sqlite_minutils
 @given(st.integers(-9223372036854775808, 9223372036854775807))
 def test_roundtrip_integers(integer):
     db = sqlite_minutils.Database(memory=True)
-    row = {
-        "integer": integer,
-    }
+    row = {'id':1, "integer": integer}
     db["test"].insert(row)
     assert list(db["test"].rows) == [row]
 
@@ -17,9 +15,7 @@ def test_roundtrip_integers(integer):
 @given(st.text())
 def test_roundtrip_text(text):
     db = sqlite_minutils.Database(memory=True)
-    row = {
-        "text": text,
-    }
+    row = {'id':1, "text": text}
     db["test"].insert(row)
     assert list(db["test"].rows) == [row]
 
@@ -27,9 +23,7 @@ def test_roundtrip_text(text):
 @given(st.binary(max_size=1024 * 1024))
 def test_roundtrip_binary(binary):
     db = sqlite_minutils.Database(memory=True)
-    row = {
-        "binary": binary,
-    }
+    row = {'id':1, "binary": binary}
     db["test"].insert(row)
     assert list(db["test"].rows) == [row]
 
@@ -37,8 +31,6 @@ def test_roundtrip_binary(binary):
 @given(st.floats(allow_nan=False))
 def test_roundtrip_floats(floats):
     db = sqlite_minutils.Database(memory=True)
-    row = {
-        "floats": floats,
-    }
+    row = {'id':1, "floats": floats}
     db["test"].insert(row)
     assert list(db["test"].rows) == [row]

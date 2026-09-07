@@ -276,7 +276,7 @@ class Database:
     def get_last_rowid(self):
         res = next(self.execute('SELECT last_insert_rowid()'), None)
         if res is None: return None
-        return int(res[0])
+        return int(res[0])           
 
     @contextlib.contextmanager
     def ensure_autocommit_off(self):
@@ -845,14 +845,23 @@ class Database:
                 )
 
         column_defs = []
+        # All minidata tables get a primary key: https://docs.fastht.ml/explains/minidataapi.html#creating-tables
+        column_names = [x[0] for x in column_items]
+        if pk is None and 'id' not in column_names:
+            column_items.insert(0, ('id', int)) 
+            column_names.insert(0, 'id')
+        if pk is None:
+            pk = ['id']
+
         # ensure pk is a tuple
         single_pk = None
         if isinstance(pk, list) and len(pk) == 1 and isinstance(pk[0], str):
             pk = pk[0]
         if isinstance(pk, str):
             single_pk = pk
-            if pk not in [c[0] for c in column_items]:
+            if pk not in column_names:
                 column_items.insert(0, (pk, int))
+
         for column_name, column_type in column_items:
             column_extras = []
             if column_name == single_pk:
@@ -945,6 +954,15 @@ class Database:
         if transform and self[name].exists():
             table = cast(Table, self[name])
             should_transform = False
+            # Has the primary key changed?
+            current_pks = table.pks
+            desired_pk = None
+            if isinstance(pk, str):
+                desired_pk = [pk]
+            elif pk:
+                desired_pk = list(pk)
+            if desired_pk and current_pks != desired_pk:
+                should_transform = True            
             # First add missing columns and figure out columns to drop
             existing_columns = table.columns_dict
             missing_columns = dict(
@@ -955,6 +973,14 @@ class Database:
             columns_to_drop = [
                 column for column in existing_columns if column not in columns
             ]
+            # If no primary key was specified and id was added automatically, we prevent
+            # it from being deleted here or Sqlite will complain that a primary key is
+            # being dropped. We delete the ID column once a new PK has been set.
+            delete_id_column = False
+            if table.pks == ['id'] and 'id' in columns_to_drop:
+                columns_to_drop.remove('id')
+                delete_id_column = True
+
             if columns_to_drop:
                 for col_name in columns_to_drop: table.drop_column(col_name)
             if missing_columns:
@@ -967,15 +993,6 @@ class Database:
                 column_order
                 and list(existing_columns)[: len(column_order)] != column_order
             ):
-                should_transform = True
-            # Has the primary key changed?
-            current_pks = table.pks
-            desired_pk = None
-            if isinstance(pk, str):
-                desired_pk = [pk]
-            elif pk:
-                desired_pk = list(pk)
-            if desired_pk and current_pks != desired_pk:
                 should_transform = True
             # Any not-null changes?
             current_not_null = {c.name for c in table.columns if c.notnull}
@@ -994,6 +1011,9 @@ class Database:
                     defaults=defaults,
                     pk=pk,
                 )
+            # There has been set a primary key that isn't ['id'].It is now safe to drop the ID column.
+            if delete_id_column and table.pks != ['id']:
+                table.drop_column('id')
             return table
         sql = self.create_table_sql(
             name=name,
@@ -1463,7 +1483,7 @@ class Table(Queryable):
         "Primary key columns for this table."
         names = [column.name for column in self.columns if int(column.is_pk)]
         if not names:
-            names = ["rowid"]
+            names = ["id"]
         return names
 
     @property
@@ -2183,7 +2203,7 @@ class Table(Queryable):
                     fk_col = pks[0].name
                     fk_col_type = pks[0].type
                 else:
-                    fk_col = "rowid"
+                    fk_col = "id"
                     fk_col_type = "INTEGER"
         if col_type is None:
             col_type = str
@@ -2925,6 +2945,11 @@ class Table(Queryable):
             ignore,
         )
 
+        if isinstance(pk, Union[str, None]):
+            pks = [pk]
+        else:
+            pks = pk        
+
         records = []
         for query, params in queries_and_params:
             try:
@@ -2989,17 +3014,32 @@ class Table(Queryable):
                     # around for multiple queries/records are returned for what should
                     # be single SQL call operations.
                     self.last_pk = records[0][hash_id]
-                elif (rid := self.db.get_last_rowid()) is not None:
-                    self.last_pk = self.last_rowid = rid
-                    # self.last_rowid will be 0 if a "INSERT OR IGNORE" happened                
+                elif len(records) > 0 and any(pks):
+                    # Pks provided as an argument
+                    last_record = records[-1]
+                    self.last_pk = tuple(last_record[pk] for pk in pks)
+                    if len(self.last_pk) == 1:
+                        self.last_pk = self.last_pk[0]    
+ 
                     if (hash_id or pk) and not upsert:
-                        row = list(self.rows_where("rowid = ?", [rid]))[0]
                         if hash_id:
-                            self.last_pk = row[hash_id]
+                            self.last_pk = last_record[hash_id]
                         elif isinstance(pk, str):
-                            self.last_pk = row[pk]
+                            self.last_pk = last_record[pk]
                         else:
-                            self.last_pk = tuple(row[p] for p in pk)
+                            self.last_pk = tuple(last_record[p] for p in pk)
+                elif len(records):
+                    # No pks provided, so we use the table's defaults
+                    last_record = records[-1]
+                    self.last_pk = tuple(last_record[pk] for pk in self.pks)
+                    if len(self.last_pk) == 1:
+                        self.last_pk = self.last_pk[0]   
+
+            # Setting last_rowid to preserve API so we don't break backwards
+            # compatibility for users.
+            # TODO: Consider turning this into a property that warns upon usage
+            self.last_rowid = self.last_pk                    
+
         return records
 
     def insert(

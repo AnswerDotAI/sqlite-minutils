@@ -13,9 +13,9 @@ def test_update_no_change(fresh_db):
     table = fresh_db["table"]
     table.insert({"foo": "bar"})
     table.update(1, {"foo": "bar"})
-    assert [{"foo": "bar"}] == table.update(1, {"foo": "bar"}).result
+    assert [{'id': 1, "foo": "bar"}] == table.update(1, {"foo": "bar"}).result
     table.update(1, {})
-    assert [{"foo": "bar"}] == list(table.rows)
+    assert [{'id': 1, "foo": "bar"}] == list(table.rows)
 
 ## Updates where something changes
 
