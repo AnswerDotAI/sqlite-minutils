@@ -5,4 +5,4 @@ d = { 'settings': { 'branch': 'main',
                 'doc_host': 'https://AnswerDotAI.github.io',
                 'git_url': 'https://github.com/AnswerDotAI/sqlite-minutils',
                 'lib_path': 'sqlite_minutils'},
-  'syms': {'sqlite_minutils.db': {}, 'sqlite_minutils.utils': {}}}
+  'syms': {}}
