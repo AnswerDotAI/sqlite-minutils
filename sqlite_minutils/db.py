@@ -9,6 +9,10 @@ import contextlib, datetime, decimal, inspect, itertools, json, os, pathlib, re,
 from typing import ( cast, Any, Callable, Dict, Generator, Iterable, Union, Optional, List, Tuple,Iterator)
 from functools import cache
 import uuid
+import apsw.ext
+import apsw.bestpractice
+
+apsw.bestpractice.apply(apsw.bestpractice.recommended)
 
 try: from sqlite_dump import iterdump
 except ImportError: iterdump = None
@@ -238,14 +242,11 @@ class Database:
         ), "Either specify a filename_or_conn or pass memory=True"
         if memory_name:
             uri = "file:{}?mode=memory&cache=shared".format(memory_name)
-            self.conn = sqlite3.connect(
-                uri,
-                uri=True,
-                check_same_thread=False,
-                isolation_level=None
+            self.conn = sqlite3.Connection(
+                uri
             )
         elif memory or filename_or_conn == ":memory:":
-            self.conn = sqlite3.connect(":memory:", isolation_level=None)
+            self.conn = sqlite3.Connection(":memory:")
         elif isinstance(filename_or_conn, (str, pathlib.Path)):
             if recreate and os.path.exists(filename_or_conn):
                 try:
@@ -253,9 +254,9 @@ class Database:
                 except OSError:
                     # Avoid mypy and __repr__ errors, see:
                     # https://github.com/simonw/sqlite-utils/issues/503
-                    self.conn = sqlite3.connect(":memory:", isolation_level=None)
+                    self.conn = sqlite3.Connection(":memory:")
                     raise
-            self.conn = sqlite3.connect(str(filename_or_conn), check_same_thread=False, isolation_level=None)
+            self.conn = sqlite3.Connection(str(filename_or_conn))
         else:
             assert not recreate, "recreate cannot be used with connections, only paths"
             self.conn = filename_or_conn
@@ -268,6 +269,8 @@ class Database:
         self._registered_functions: set = set()
         self.use_counts_table = use_counts_table
         self.strict = strict
+        # self.execute('PRAGMA foreign_keys=on;')
+
 
     def close(self):
         "Close the SQLite connection, and the underlying database file"
@@ -277,25 +280,6 @@ class Database:
         res = next(self.execute('SELECT last_insert_rowid()'), None)
         if res is None: return None
         return int(res[0])
-
-    @contextlib.contextmanager
-    def ensure_autocommit_off(self):
-        """
-        Ensure autocommit is off for this database connection.
-
-        Example usage::
-
-            with db.ensure_autocommit_off():
-                # do stuff here
-
-        This will reset to the previous autocommit state at the end of the block.
-        """
-        old_isolation_level = self.conn.isolation_level
-        try:
-            self.conn.isolation_level = None
-            yield
-        finally:
-            self.conn.isolation_level = old_isolation_level
 
     @contextlib.contextmanager
     def tracer(self, tracer: Optional[Callable] = None):
@@ -421,10 +405,10 @@ class Database:
           parameters, or a dictionary for ``where id = :id``
         """
         cursor = self.execute(sql, tuple(params or tuple()))
-        if cursor.description is None: return []
-        keys = [d[0] for d in cursor.description]
+        try: columns = [c[0] for c in cursor.description]
+        except apsw.ExecutionCompleteError: return []
         for row in cursor:
-            yield dict(zip(keys, row))
+            yield dict(zip(columns, row))
 
     def execute(
         self, sql: str, parameters: Optional[Union[Iterable, dict]] = None
@@ -643,14 +627,12 @@ class Database:
         Sets ``journal_mode`` to ``'wal'`` to enable Write-Ahead Log mode.
         """
         if self.journal_mode != "wal":
-            with self.ensure_autocommit_off():
-                self.execute("PRAGMA journal_mode=wal;")
+            self.execute("PRAGMA journal_mode=wal;")
 
     def disable_wal(self):
         "Sets ``journal_mode`` back to ``'delete'`` to disable Write-Ahead Log mode."
         if self.journal_mode != "delete":
-            with self.ensure_autocommit_off():
-                self.execute("PRAGMA journal_mode=delete;")
+            self.execute("PRAGMA journal_mode=delete;")
 
     def _ensure_counts_table(self):
         self.execute(_COUNTS_TABLE_CREATE_SQL.format(self._counts_table_name))
@@ -1292,7 +1274,9 @@ class Queryable:
         if offset is not None:
             sql += f" offset {offset}"
         cursor = self.db.execute(sql, where_args or [])
-        columns = [c[0] for c in cursor.description]
+        # If no records found, raise a NotFoundError
+        try: columns = [c[0] for c in cursor.description]
+        except apsw.ExecutionCompleteError: return []
         for row in cursor:
             yield dict(zip(columns, row))
 
@@ -1740,7 +1724,7 @@ class Table(Queryable):
         ]
         try:
             if pragma_foreign_keys_was_on:
-                self.db.execute("PRAGMA foreign_keys=0;")
+                self.db.execute("PRAGMA foreign_keys=off;")
             for sql in sqls:
                 self.db.execute(sql)
             # Run the foreign_key_check before we commit
@@ -1748,7 +1732,7 @@ class Table(Queryable):
                 self.db.execute("PRAGMA foreign_key_check;")
         finally:
             if pragma_foreign_keys_was_on:
-                self.db.execute("PRAGMA foreign_keys=1;")
+                self.db.execute("PRAGMA foreign_keys=on;")
         return self
 
     def transform_sql(
@@ -2211,7 +2195,7 @@ class Table(Queryable):
         """
         try:
             self.db.execute("DROP TABLE [{}]".format(self.name))
-        except sqlite3.OperationalError:
+        except apsw.SQLError:
             if not ignore:
                 raise
 
@@ -2769,12 +2753,10 @@ class Table(Queryable):
             if alter and (" column" in e.args[0]):
                 # Attempt to add any missing columns, then try again
                 self.add_missing_columns([updates])
-                rowcount = self.db.execute(sql, args).rowcount
+                self.db.execute(sql, args)
             else:
                 raise
 
-        # TODO: Test this works (rolls back) - use better exception:
-        # assert rowcount == 1
         self.last_pk = pk_values[0] if len(pks) == 1 else pk_values
         self.result = records
         return self
@@ -2929,7 +2911,8 @@ class Table(Queryable):
         for query, params in queries_and_params:
             try:
                 cursor = self.db.execute(query, tuple(params))
-                if cursor.description is None: continue
+                try: columns = [c[0] for c in cursor.description]
+                except apsw.ExecutionCompleteError: continue
                 columns = [d[0] for d in cursor.description]
                 for row in cursor:
                     records.append(dict(zip(columns, row)))
@@ -3671,7 +3654,7 @@ class View(Queryable):
 
         try:
             self.db.execute("DROP VIEW [{}]".format(self.name))
-        except sqlite3.OperationalError:
+        except apsw.SQLError:
             if not ignore:
                 raise
 
