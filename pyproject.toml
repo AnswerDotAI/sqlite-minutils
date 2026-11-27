@@ -7,7 +7,7 @@ name = "sqlite-minutils"
 dynamic = ["version"]
 description = "A fork of sqlite-utils with CLI etc removed"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = "Apache-2.0"
 authors = [{name = "Jeremy Howard", email = "github@jhoward.fastmail.fm"}]
 keywords = ['nbdev', 'jupyter', 'notebook', 'python']
